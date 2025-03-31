@@ -13,7 +13,10 @@ import (
 func main() {
 	config.LoadConfig()
 
-	database.InitDBConnection()
+	if err := database.SetupDatabase(); err != nil {
+		log.Fatalf("Database setup failed: %v", err)
+	}
+
 	app := fiber.New()
 
 	app.Use(cors.New(cors.Config{

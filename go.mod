@@ -2,13 +2,14 @@ module ithozyeva
 
 go 1.23.6
 
-require github.com/spf13/viper v1.20.0
+require (
+	github.com/lib/pq v1.10.9
+	github.com/spf13/viper v1.20.0
+)
 
 require (
 	github.com/andybalholm/brotli v1.1.0 // indirect
-	github.com/gofiber/utils v0.0.10 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/gorilla/schema v1.1.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 	github.com/jackc/pgx/v5 v5.5.5 // indirect
@@ -30,7 +31,6 @@ require (
 require (
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
-	github.com/gofiber/fiber v1.14.6
 	github.com/gofiber/fiber/v2 v2.52.6
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/pelletier/go-toml/v2 v2.2.3 // indirect

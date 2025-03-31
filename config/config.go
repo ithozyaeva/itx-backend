@@ -21,7 +21,7 @@ type Config struct {
 var CFG *Config
 
 func LoadConfig() {
-	viper.SetConfigFile("../.env")
+	viper.SetConfigFile(".env")
 	_ = viper.ReadInConfig()
 	viper.AutomaticEnv()
 
