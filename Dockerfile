@@ -18,4 +18,6 @@ WORKDIR /app
 COPY --from=builder /app/backend /backend
 RUN chmod +x /backend
 
+COPY --from=builder /app/database/migrations /app/database/migrations
+
 CMD ["/backend"]
