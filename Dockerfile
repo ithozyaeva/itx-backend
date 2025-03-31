@@ -9,13 +9,13 @@ RUN go mod download
 
 COPY . .
 
-RUN GOARCH=amd64 CGO_ENABLED=0 GOOS=linux go build -o server ./cmd
+RUN GOARCH=amd64 CGO_ENABLED=0 GOOS=linux go build -o backend ./cmd
 
 FROM alpine
 
 WORKDIR /app
 
-COPY --from=builder /app/server /server
-RUN chmod +x /server
+COPY --from=builder /app/backend /backend
+RUN chmod +x /backend
 
-CMD ["/server"]
+CMD ["/backend"]
