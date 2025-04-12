@@ -101,3 +101,36 @@ func (r *MemberRepository) GetById(id int64) (*models.MemberModel, error) {
 
 	return result, nil
 }
+
+// UpdateMemberStatus updates the active status of a member
+func (r *MemberRepository) UpdateMemberStatus(telegramID string, isActive bool) error {
+	err := database.DB.Model(&models.Member{}).
+		Where("tg = ?", telegramID).
+		Update("is_active", isActive).
+		Error
+	return err
+}
+
+// CreateMemberIfNotExists creates a new member if they don't exist
+func (r *MemberRepository) CreateMemberIfNotExists(telegramID string, username string) (*models.Member, error) {
+	user, err := r.GetMemberByTelegram(telegramID)
+	if err != nil {
+		return nil, err
+	}
+
+	if user != nil {
+		return user, nil
+	}
+
+	member := &models.Member{
+		Tg:       telegramID,
+		Name:     username,
+		IsActive: true,
+	}
+	if err := database.DB.Create(member).Error; err != nil {
+		return nil, err
+	}
+
+	return member, nil
+
+}

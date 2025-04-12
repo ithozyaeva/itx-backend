@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	config.LoadConfig()
+	config.LoadBackendConfig()
 
 	if err := database.SetupDatabase(); err != nil {
 		log.Fatalf("Database setup failed: %v", err)
@@ -20,7 +20,7 @@ func main() {
 	app := fiber.New()
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     config.CFG.CorsUrls,
+		AllowOrigins:     config.BackendCFG.CorsUrls,
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
 		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
 		AllowCredentials: true, // если нужны куки/авторизация

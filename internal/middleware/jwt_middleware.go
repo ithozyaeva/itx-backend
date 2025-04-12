@@ -15,7 +15,7 @@ func Protected() fiber.Handler {
 		}
 
 		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-			return config.CFG.JwtSecret, nil
+			return config.BackendCFG.JwtSecret, nil
 		})
 
 		if err != nil || !token.Valid {

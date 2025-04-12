@@ -1,9 +1,10 @@
 package models
 
 type Member struct {
-	Id   int64  `json:"id"`
-	Tg   string `json:"tg"`
-	Name string `json:"name"`
+	Id       int64  `json:"id"`
+	Tg       string `json:"tg"`
+	Name     string `json:"name"`
+	IsActive bool   `json:"is_active"`
 }
 
 type ReviewOnCommunity struct {

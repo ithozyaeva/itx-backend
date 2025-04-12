@@ -21,13 +21,14 @@ type Migration struct {
 	AppliedAt int64
 }
 
-func SetupDatabase() error {
+// SetupDatabaseWithConfig sets up the database using the provided database configuration
+func SetupDatabaseWithConfig(dbConfig config.DatabaseConfig) error {
 	baseDSN := fmt.Sprintf(
 		"host=%s user=%s password=%s port=%s dbname=postgres sslmode=disable",
-		config.CFG.Database.Host,
-		config.CFG.Database.User,
-		config.CFG.Database.Password,
-		config.CFG.Database.Port)
+		dbConfig.Host,
+		dbConfig.User,
+		dbConfig.Password,
+		dbConfig.Port)
 
 	baseDB, err := sql.Open("postgres", baseDSN)
 	if err != nil {
@@ -36,28 +37,28 @@ func SetupDatabase() error {
 	defer baseDB.Close()
 
 	var exists bool
-	query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = '%s')", config.CFG.Database.Name)
+	query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = '%s')", dbConfig.Name)
 	err = baseDB.QueryRow(query).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to check if database exists: %w", err)
 	}
 
 	if !exists {
-		fmt.Printf("Database '%s' does not exist, creating...\n", config.CFG.Database.Name)
-		_, err = baseDB.Exec(fmt.Sprintf("CREATE DATABASE %s", config.CFG.Database.Name))
+		fmt.Printf("Database '%s' does not exist, creating...\n", dbConfig.Name)
+		_, err = baseDB.Exec(fmt.Sprintf("CREATE DATABASE %s", dbConfig.Name))
 		if err != nil {
 			return fmt.Errorf("failed to create database: %w", err)
 		}
-		fmt.Printf("Database '%s' created successfully\n", config.CFG.Database.Name)
+		fmt.Printf("Database '%s' created successfully\n", dbConfig.Name)
 	}
 
 	dsn := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
-		config.CFG.Database.Host,
-		config.CFG.Database.User,
-		config.CFG.Database.Password,
-		config.CFG.Database.Name,
-		config.CFG.Database.Port)
+		dbConfig.Host,
+		dbConfig.User,
+		dbConfig.Password,
+		dbConfig.Name,
+		dbConfig.Port)
 
 	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
@@ -107,4 +108,14 @@ func SetupDatabase() error {
 	}
 
 	return nil
+}
+
+// SetupDatabase sets up the database for the backend application
+func SetupDatabase() error {
+	return SetupDatabaseWithConfig(config.BackendCFG.Database)
+}
+
+// SetupSyncUsersDatabase sets up the database for the sync users application
+func SetupSyncUsersDatabase() error {
+	return SetupDatabaseWithConfig(config.SyncUsersCFG.Database)
 }

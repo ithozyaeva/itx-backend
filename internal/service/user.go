@@ -41,7 +41,7 @@ func (u *userService) Login(login string, password string) (string, error) {
 	// Генерация JWT
 	token := utils.GenerateJWT(login)
 
-	tokenString, err := token.SignedString(config.CFG.JwtSecret)
+	tokenString, err := token.SignedString(config.BackendCFG.JwtSecret)
 
 	if err != nil {
 		return "", errors.New("не удалось сгенерировать токен")
@@ -57,7 +57,7 @@ func (u *userService) RefreshToken(tokenString string) (string, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New("неверный метод подписи")
 		}
-		return config.CFG.JwtSecret, nil
+		return config.BackendCFG.JwtSecret, nil
 	})
 
 	if err != nil {
@@ -100,7 +100,7 @@ func (u *userService) RefreshToken(tokenString string) (string, error) {
 
 	// Генерируем новый токен
 	newToken := utils.GenerateJWT(login)
-	newTokenString, err := newToken.SignedString(config.CFG.JwtSecret)
+	newTokenString, err := newToken.SignedString(config.BackendCFG.JwtSecret)
 	if err != nil {
 		return "", errors.New("не удалось сгенерировать новый токен")
 	}

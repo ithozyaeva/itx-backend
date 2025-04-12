@@ -4,28 +4,19 @@ import (
 	"github.com/spf13/viper"
 )
 
-type DatabaseConfig struct {
-	Host     string
-	Port     string
-	User     string
-	Password string
-	Name     string
+type SyncUsersConfig struct {
+	Database DatabaseConfig
+	BotToken string
 }
 
-type Config struct {
-	Database  DatabaseConfig
-	JwtSecret []byte
-	CorsUrls  string
-}
+var SyncUsersCFG *SyncUsersConfig
 
-var CFG *Config
-
-func LoadConfig() {
+func LoadSyncUsersConfig() {
 	viper.SetConfigFile(".env")
 	_ = viper.ReadInConfig()
 	viper.AutomaticEnv()
 
-	CFG = &Config{
+	SyncUsersCFG = &SyncUsersConfig{
 		Database: DatabaseConfig{
 			Host:     viper.GetString("DB_HOST"),
 			Port:     viper.GetString("DB_PORT"),
@@ -33,7 +24,6 @@ func LoadConfig() {
 			Password: viper.GetString("DB_PASSWORD"),
 			Name:     viper.GetString("DB_NAME"),
 		},
-		JwtSecret: []byte("jwt_secret"),
-		CorsUrls:  viper.GetString("CORS_URLS"),
+		BotToken: viper.GetString("TELEGRAM_BOT_TOKEN"),
 	}
 }
