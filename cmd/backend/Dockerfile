@@ -21,6 +21,5 @@ RUN chmod +x /backend
 
 # Copy migrations and other necessary files
 COPY --from=builder /app/database/migrations /app/database/migrations
-COPY --from=builder /app/config /app/config
 
 CMD ["/backend"]

@@ -112,25 +112,21 @@ func (r *MemberRepository) UpdateMemberStatus(telegramID string, isActive bool) 
 }
 
 // CreateMemberIfNotExists creates a new member if they don't exist
-func (r *MemberRepository) CreateMemberIfNotExists(telegramID string, username string) (*models.Member, error) {
-	user, err := r.GetMemberByTelegram(telegramID)
-	if err != nil {
+func (r *MemberRepository) CreateMemberIfNotExists(telegramID, username string) (*models.Member, error) {
+	// Попробуем сразу найти пользователя
+	if user, err := r.GetMemberByTelegram(telegramID); err != nil {
 		return nil, err
-	}
-
-	if user != nil {
+	} else if user != nil {
 		return user, nil
 	}
 
+	// Если не найден — создаём
 	member := &models.Member{
 		Tg:       telegramID,
 		Name:     username,
 		IsActive: true,
 	}
-	if err := database.DB.Create(member).Error; err != nil {
-		return nil, err
-	}
 
-	return member, nil
-
+	err := database.DB.Create(member).Error
+	return member, err
 }
