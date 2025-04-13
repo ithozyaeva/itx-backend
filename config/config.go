@@ -13,9 +13,12 @@ type DatabaseConfig struct {
 }
 
 type Config struct {
-	Database  DatabaseConfig
-	JwtSecret []byte
-	CorsUrls  string
+	Database      DatabaseConfig
+	JwtSecret     []byte
+	CorsUrls      string
+	Port          string
+	DatabaseURL   string
+	TelegramToken string
 }
 
 var CFG *Config
@@ -33,7 +36,10 @@ func LoadConfig() {
 			Password: viper.GetString("DB_PASSWORD"),
 			Name:     viper.GetString("DB_NAME"),
 		},
-		JwtSecret: []byte("jwt_secret"),
-		CorsUrls:  viper.GetString("CORS_URLS"),
+		JwtSecret:     []byte("jwt_secret"),
+		CorsUrls:      viper.GetString("CORS_URLS"),
+		Port:          viper.GetString("PORT"),
+		DatabaseURL:   viper.GetString("DATABASE_URL"),
+		TelegramToken: viper.GetString("TELEGRAM_BOT_TOKEN"),
 	}
 }
