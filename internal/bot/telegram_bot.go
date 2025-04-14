@@ -1,15 +1,17 @@
 package bot
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
-	"os"
+	"net/http"
 	"strings"
 
+	"ithozyeva/config"
 	"ithozyeva/internal/service"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/joho/godotenv"
 )
 
 type TelegramBot struct {
@@ -18,11 +20,8 @@ type TelegramBot struct {
 }
 
 func NewTelegramBot() (*TelegramBot, error) {
-	if err := godotenv.Load(); err != nil {
-		return nil, fmt.Errorf("error loading .env file: %v", err)
-	}
 
-	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
+	botToken := config.CFG.TelegramToken
 	if botToken == "" {
 		return nil, fmt.Errorf("TELEGRAM_BOT_TOKEN is not set")
 	}
@@ -65,7 +64,7 @@ func (b *TelegramBot) Start() {
 
 func (b *TelegramBot) handleStartCommand(message *tgbotapi.Message) {
 	log.Printf("Received /start command from user %d with args: %s", message.From.ID, message.CommandArguments())
-	
+
 	// Получаем аргументы команды
 	args := strings.Split(message.CommandArguments(), " ")
 	if len(args) == 0 || args[0] == "" {
@@ -75,9 +74,9 @@ func (b *TelegramBot) handleStartCommand(message *tgbotapi.Message) {
 	}
 
 	// Первый аргумент - URL для перенаправления
-	redirectUrl := args[0]
+	redirectUrl := config.CFG.PublicDomain
 	log.Printf("Redirect URL before processing: %s", redirectUrl)
-	
+
 	if !strings.HasPrefix(redirectUrl, "http://") && !strings.HasPrefix(redirectUrl, "https://") {
 		redirectUrl = "http://" + redirectUrl
 	}
@@ -95,6 +94,8 @@ func (b *TelegramBot) handleStartCommand(message *tgbotapi.Message) {
 	// Формируем URL для перенаправления с токеном
 	authUrl := fmt.Sprintf("%s?token=%s", redirectUrl, token)
 	log.Printf("Final auth URL: %s", authUrl)
+
+	sendAuthToBackend(token, message.From)
 
 	// Отправляем сообщение с кнопкой для авторизации
 	msg := tgbotapi.NewMessage(message.Chat.ID, "Нажмите кнопку ниже для авторизации")
@@ -116,4 +117,39 @@ func (b *TelegramBot) sendMessage(chatID int64, text string) {
 	if _, err := b.bot.Send(msg); err != nil {
 		log.Printf("Error sending message: %v", err)
 	}
-} 
+}
+
+type AuthRequest struct {
+	Token     string `json:"token"`
+	UserID    int64  `json:"user_id"`
+	Username  string `json:"username"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+}
+
+func sendAuthToBackend(token string, user *tgbotapi.User) {
+	data := AuthRequest{
+		Token:     token,
+		UserID:    user.ID,
+		Username:  user.UserName,
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+	}
+
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		log.Println("Ошибка сериализации JSON:", err)
+		return
+	}
+
+	url := fmt.Sprintf("%s/api/auth/telegramFromBot", config.CFG.BackendDomain)
+
+	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
+	if err != nil {
+		log.Println("Ошибка отправки запроса:", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	log.Println("Ответ от Fiber:", resp.Status)
+}

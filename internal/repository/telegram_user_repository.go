@@ -70,4 +70,13 @@ func (r *TelegramUserRepository) Search(limit *int, offset *int) ([]models.Teleg
 	}
 
 	return users, count, nil
-} 
+}
+
+func (r *TelegramUserRepository) GetByToken(token string) (*models.TelegramUser, error) {
+	var user models.TelegramUser
+	err := r.db.Where("token = ?", token).First(&user).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}

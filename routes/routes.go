@@ -23,6 +23,7 @@ func SetupRoutes(app *fiber.App, db *gorm.DB) {
 	// Маршруты для авторизации через Telegram
 	auth := app.Group("/api/auth")
 	auth.Post("/telegram", telegramAuthHandler.Authenticate)
+	auth.Post("/telegramFromBot", telegramAuthHandler.CreateUser)
 
 	// Защищенные маршруты
 	protected := app.Group("/api", authMiddleware.RequireAuth)

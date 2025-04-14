@@ -1,8 +1,8 @@
 package main
 
 import (
-	"fmt"
 	"ithozyeva/config"
+	"ithozyeva/database"
 	"ithozyeva/internal/bot"
 	"ithozyeva/routes"
 	"log"
@@ -10,28 +10,14 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
 )
 
 func main() {
 	// Загружаем конфигурацию
 	config.LoadConfig()
 
-	// Формируем DSN для подключения к базе данных
-	dsn := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
-		config.CFG.Database.Host,
-		config.CFG.Database.Port,
-		config.CFG.Database.User,
-		config.CFG.Database.Password,
-		config.CFG.Database.Name,
-	)
-
 	// Подключаемся к базе данных
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
-	}
+	database.SetupDatabase()
 
 	// Создаем экземпляр Fiber
 	app := fiber.New(fiber.Config{
@@ -47,7 +33,7 @@ func main() {
 	}))
 
 	// Настраиваем маршруты
-	routes.SetupRoutes(app, db)
+	routes.SetupRoutes(app, database.DB)
 
 	// Запускаем Telegram бота в отдельной горутине
 	go func() {

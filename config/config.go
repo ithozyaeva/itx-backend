@@ -19,6 +19,8 @@ type Config struct {
 	Port          string
 	DatabaseURL   string
 	TelegramToken string
+	PublicDomain  string
+	BackendDomain string
 }
 
 var CFG *Config
@@ -41,5 +43,7 @@ func LoadConfig() {
 		Port:          viper.GetString("PORT"),
 		DatabaseURL:   viper.GetString("DATABASE_URL"),
 		TelegramToken: viper.GetString("TELEGRAM_BOT_TOKEN"),
+		PublicDomain:  viper.GetString("PUBLIC_DOMAIN"),
+		BackendDomain: viper.GetString("BACKEND_DOMAIN"),
 	}
 }
