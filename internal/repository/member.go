@@ -7,6 +7,11 @@ import (
 )
 
 // Изменяем с type alias на новый тип
+type MemberRepositoryInterface interface {
+	BaseRepository[models.Member]
+
+	GetByTelegramID(telegramID int64) (*models.Member, error)
+}
 type MemberRepository struct {
 	BaseRepository[models.Member]
 }
@@ -17,14 +22,21 @@ func NewMemberRepository() *MemberRepository {
 	}
 }
 
-// GetMemberByTelegram находит пользователя по его Telegram
 func (r *MemberRepository) GetMemberByTelegram(telegram string) (*models.Member, error) {
 	var member models.Member
-	result := database.DB.Where("tg = ?", telegram).First(&member)
+	result := database.DB.Where("username = ?", telegram).First(&member)
 	if result.Error != nil {
 		return nil, result.Error
 	}
 	return &member, nil
+}
+
+func (r *MemberRepository) GetByTelegramID(telegramID int64) (*models.Member, error) {
+	entity := new(models.Member)
+	if err := database.DB.Where("telegram_id = ?", telegramID).First(entity).Error; err != nil {
+		return nil, err
+	}
+	return entity, nil
 }
 
 // Search выполняет поиск участников с пагинацией и проверкой на статус ментора
@@ -38,7 +50,7 @@ func (r *MemberRepository) Search(limit *int, offset *int) ([]models.MemberModel
 
 	// Создаем SQL-запрос с LEFT JOIN для получения всех участников и информации о том, являются ли они менторами
 	query := `
-		SELECT m.id, m.tg, m.name, 
+		SELECT m.id, m.username, m.first_name, m.last_name, m.telegram_id, 
 		       CASE WHEN mt.id IS NOT NULL THEN true ELSE false END as is_mentor
 		FROM members m
 		LEFT JOIN mentors mt ON m.id = mt."memberId"
@@ -62,17 +74,19 @@ func (r *MemberRepository) Search(limit *int, offset *int) ([]models.MemberModel
 	// Обрабатываем результаты
 	var result []models.MemberModel
 	for rows.Next() {
-		var id int64
-		var tg, name string
+		var id, tgId int64
+		var tg, firstName, lastName string
 		var isMentor bool
-		if err := rows.Scan(&id, &tg, &name, &isMentor); err != nil {
+		if err := rows.Scan(&id, &tg, &firstName, &lastName, &tgId, &isMentor); err != nil {
 			return nil, 0, err
 		}
 		result = append(result, models.MemberModel{
-			Id:       id,
-			Tg:       tg,
-			Name:     name,
-			IsMentor: isMentor,
+			Id:         id,
+			Username:   tg,
+			TelegramID: tgId,
+			FirstName:  firstName,
+			LastName:   lastName,
+			IsMentor:   isMentor,
 		})
 	}
 
@@ -93,10 +107,11 @@ func (r *MemberRepository) GetById(id int64) (*models.MemberModel, error) {
 	}
 
 	result := &models.MemberModel{
-		Id:       member.Id,
-		Tg:       member.Tg,
-		Name:     member.Name,
-		IsMentor: count > 0, // Если есть хотя бы одна запись, то участник является ментором
+		Id:        member.Id,
+		Username:  member.Username,
+		FirstName: member.FirstName,
+		LastName:  member.LastName,
+		IsMentor:  count > 0, // Если есть хотя бы одна запись, то участник является ментором
 	}
 
 	return result, nil

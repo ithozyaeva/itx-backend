@@ -7,7 +7,6 @@ import (
 type BaseRepository[T any] interface {
 	Search(limit *int, offset *int) ([]T, int64, error)
 	GetById(id int64) (*T, error)
-	GetByTelegramID(telegramID int64) (*T, error)
 	Create(entity *T) (*T, error)
 	Update(entity *T) (*T, error)
 	Delete(entity *T) error
@@ -56,14 +55,6 @@ func (r *baseRepository[T]) Search(limit *int, offset *int) ([]T, int64, error) 
 func (r *baseRepository[T]) GetById(id int64) (*T, error) {
 	entity := new(T)
 	if err := r.db.First(entity, id).Error; err != nil {
-		return nil, err
-	}
-	return entity, nil
-}
-
-func (r *baseRepository[T]) GetByTelegramID(telegramID int64) (*T, error) {
-	entity := new(T)
-	if err := r.db.Where("telegram_id = ?", telegramID).First(entity).Error; err != nil {
 		return nil, err
 	}
 	return entity, nil

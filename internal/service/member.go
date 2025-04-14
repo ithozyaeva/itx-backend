@@ -25,9 +25,9 @@ func (a *MemberRepoAdapter) Search(limit *int, offset *int) ([]models.Member, in
 	var members []models.Member
 	for _, model := range memberModels {
 		members = append(members, models.Member{
-			Id:   model.Id,
-			Tg:   model.Tg,
-			Name: model.Name,
+			Id:        model.Id,
+			Username:  model.Username,
+			FirstName: model.FirstName,
 		})
 	}
 

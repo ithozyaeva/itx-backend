@@ -3,8 +3,6 @@ package routes
 import (
 	"ithozyeva/internal/handler"
 	"ithozyeva/internal/middleware"
-	"ithozyeva/internal/repository"
-	"ithozyeva/internal/service"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -12,18 +10,19 @@ import (
 
 func SetupRoutes(app *fiber.App, db *gorm.DB) {
 	// Инициализация сервисов и репозиториев
-	telegramService, err := service.NewTelegramService()
-	if err != nil {
-		panic(err)
-	}
-	userRepo := repository.NewTelegramUserRepository(db)
-	telegramAuthHandler := handler.NewTelegramAuthHandler(telegramService, userRepo)
+	telegramAuthHandler := handler.NewTelegramAuthHandler()
 	authMiddleware := middleware.NewAuthMiddleware(db)
 
 	// Маршруты для авторизации через Telegram
 	auth := app.Group("/api/auth")
 	auth.Post("/telegram", telegramAuthHandler.Authenticate)
-	auth.Post("/telegramFromBot", telegramAuthHandler.CreateUser)
+	auth.Post("/telegramFromBot", telegramAuthHandler.HandleBotMessage)
+
+	// Маршруты для аутентификации в админ панели
+	// TODO: Рассмотреть вариант авторизации в админке через тг + роль admin у member (подумать о его переименование в user, или же оставить тотальное разделение между public и admin зонами)
+	userHandler := handler.NewUserHandler()
+	auth.Post("/login", userHandler.Login)
+	auth.Post("/refresh", userHandler.RefreshToken)
 
 	// Защищенные маршруты
 	protected := app.Group("/api", authMiddleware.RequireAuth)
@@ -76,10 +75,4 @@ func SetupRoutes(app *fiber.App, db *gorm.DB) {
 	reviewsOnService.Post("/", reviewOnServiceHandler.CreateReview)
 	reviewsOnService.Put("/:id", reviewOnServiceHandler.Update)
 	reviewsOnService.Delete("/:id", reviewOnServiceHandler.Delete)
-
-	// Маршруты для аутентификации
-	userHandler := handler.NewUserHandler()
-	auth = protected.Group("/auth")
-	auth.Post("/login", userHandler.Login)
-	auth.Post("/refresh", userHandler.RefreshToken)
 }

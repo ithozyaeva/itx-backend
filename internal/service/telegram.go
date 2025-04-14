@@ -33,14 +33,9 @@ type TelegramAuthResponse struct {
 }
 
 // GenerateAuthToken генерирует токен для авторизации
-func (s *TelegramService) GenerateAuthToken(userID int64) (string, error) {
+func (s *TelegramService) GenerateAuthToken(userID int64) string {
 	// Здесь можно использовать JWT или другой механизм генерации токена
 	// Для простоты используем хеш от ID пользователя
 	token := fmt.Sprintf("tg_%d", userID)
-	return token, nil
-}
-
-// GetBotUrl возвращает URL бота с параметрами для авторизации
-func (s *TelegramService) GetBotUrl(redirectUrl string) string {
-	return fmt.Sprintf("https://t.me/itx_welcome_bot?start=%s", redirectUrl)
+	return token
 }

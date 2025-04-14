@@ -52,8 +52,9 @@ func (s *MentorService) GetByIdFull(id int64) (*models.MentorModel, error) {
 	// Преобразуем в MentorModel
 	mentor := &models.MentorModel{
 		Id:         mentorDb.Id,
-		Tg:         mentorDb.Member.Tg,
-		Name:       mentorDb.Member.Name,
+		Username:   mentorDb.Member.Username,
+		FirstName:  mentorDb.Member.FirstName,
+		LastName:   mentorDb.Member.LastName,
 		Occupation: mentorDb.Occupation,
 		Experience: mentorDb.Experience,
 		Order:      mentorDb.Order,
@@ -78,8 +79,9 @@ func (s *MentorService) FindByTag(tagId int64, limit int, offset int) (*models.R
 	for i, mentorDb := range mentorsDb {
 		mentors[i] = models.MentorModel{
 			Id:         mentorDb.Id,
-			Tg:         mentorDb.Member.Tg,
-			Name:       mentorDb.Member.Name,
+			Username:   mentorDb.Member.Username,
+			FirstName:  mentorDb.Member.FirstName,
+			LastName:   mentorDb.Member.LastName,
 			Occupation: mentorDb.Occupation,
 			Experience: mentorDb.Experience,
 			Order:      mentorDb.Order,
@@ -111,8 +113,9 @@ func (s *MentorService) CreateWithRelations(request *models.MentorCreateUpdateRe
 	// Преобразуем в MentorModel
 	mentor := &models.MentorModel{
 		Id:         mentorDb.Id,
-		Tg:         mentorDb.Member.Tg,
-		Name:       mentorDb.Member.Name,
+		Username:   mentorDb.Member.Username,
+		FirstName:  mentorDb.Member.FirstName,
+		LastName:   mentorDb.Member.LastName,
 		Occupation: mentorDb.Occupation,
 		Experience: mentorDb.Experience,
 		Order:      mentorDb.Order,
@@ -135,8 +138,9 @@ func (s *MentorService) UpdateWithRelations(request *models.MentorCreateUpdateRe
 	// Преобразуем в MentorModel
 	mentor := &models.MentorModel{
 		Id:         mentorDb.Id,
-		Tg:         mentorDb.Member.Tg,
-		Name:       mentorDb.Member.Name,
+		Username:   mentorDb.Member.Username,
+		FirstName:  mentorDb.Member.FirstName,
+		LastName:   mentorDb.Member.LastName,
 		Occupation: mentorDb.Occupation,
 		Experience: mentorDb.Experience,
 		Order:      mentorDb.Order,
@@ -161,8 +165,9 @@ func (s *MentorService) GetAllWithRelations(limit *int, offset *int) (*models.Re
 	for _, mentorDb := range mentorsDb {
 		mentor := models.MentorModel{
 			Id:         mentorDb.Id,
-			Name:       mentorDb.Member.Name,
-			Tg:         mentorDb.Member.Tg,
+			FirstName:  mentorDb.Member.FirstName,
+			LastName:   mentorDb.Member.LastName,
+			Username:   mentorDb.Member.Username,
 			Occupation: mentorDb.Occupation,
 			Experience: mentorDb.Experience,
 			Order:      mentorDb.Order,

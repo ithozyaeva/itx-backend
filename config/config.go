@@ -17,7 +17,6 @@ type Config struct {
 	JwtSecret     []byte
 	CorsUrls      string
 	Port          string
-	DatabaseURL   string
 	TelegramToken string
 	PublicDomain  string
 	BackendDomain string
@@ -41,7 +40,6 @@ func LoadConfig() {
 		JwtSecret:     []byte("jwt_secret"),
 		CorsUrls:      viper.GetString("CORS_URLS"),
 		Port:          viper.GetString("PORT"),
-		DatabaseURL:   viper.GetString("DATABASE_URL"),
 		TelegramToken: viper.GetString("TELEGRAM_BOT_TOKEN"),
 		PublicDomain:  viper.GetString("PUBLIC_DOMAIN"),
 		BackendDomain: viper.GetString("BACKEND_DOMAIN"),
