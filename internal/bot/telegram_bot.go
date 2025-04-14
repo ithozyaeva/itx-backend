@@ -138,7 +138,7 @@ func sendAuthToBackend(token string, user *tgbotapi.User) {
 		return
 	}
 
-	url := fmt.Sprintf("%s/api/auth/telegramFromBot", config.CFG.BackendDomain)
+	url := fmt.Sprintf("%s/api/auth/telegram-from-bot", config.CFG.BackendDomain)
 
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {

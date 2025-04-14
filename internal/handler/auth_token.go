@@ -83,7 +83,7 @@ func (h *TelegramAuthHandler) HandleBotMessage(c *fiber.Ctx) error {
 			LastName:   req.LastName,
 		}
 
-		createdUser, err := h.authService.CreateNewMember(newUser, h.telegramService.GenerateAuthToken(newUser.TelegramID))
+		createdUser, err := h.authService.CreateNewMember(newUser, req.Token)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Failed to create user",
@@ -91,7 +91,7 @@ func (h *TelegramAuthHandler) HandleBotMessage(c *fiber.Ctx) error {
 		}
 		existingUser = createdUser
 	} else {
-		_, err := h.authService.CreateOrUpdateToken(req.UserID, h.telegramService.GenerateAuthToken(req.UserID))
+		_, err := h.authService.CreateOrUpdateToken(req.UserID, req.Token)
 		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"error": "Failed to get auth token",

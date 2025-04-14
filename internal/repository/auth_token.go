@@ -15,11 +15,11 @@ func NewAuthTokenRepository() *AuthTokenRepository {
 	return &AuthTokenRepository{db: database.DB}
 }
 
-func (r *AuthTokenRepository) Create(user *models.AuthToken) (*models.AuthToken, error) {
-	if err := r.db.Create(user).Error; err != nil {
+func (r *AuthTokenRepository) Create(token *models.AuthToken) (*models.AuthToken, error) {
+	if err := r.db.Create(token).Error; err != nil {
 		return nil, err
 	}
-	return user, nil
+	return token, nil
 }
 
 func (r *AuthTokenRepository) GetByTelegramID(telegramID int64) (*models.AuthToken, error) {
@@ -31,15 +31,15 @@ func (r *AuthTokenRepository) GetByTelegramID(telegramID int64) (*models.AuthTok
 	return &user, nil
 }
 
-func (r *AuthTokenRepository) Update(user *models.AuthToken) (*models.AuthToken, error) {
-	if err := r.db.Save(user).Error; err != nil {
+func (r *AuthTokenRepository) Update(token *models.AuthToken) (*models.AuthToken, error) {
+	if err := r.db.Save(token).Error; err != nil {
 		return nil, err
 	}
-	return user, nil
+	return token, nil
 }
 
-func (r *AuthTokenRepository) Delete(user *models.AuthToken) error {
-	return r.db.Delete(user).Error
+func (r *AuthTokenRepository) Delete(token *models.AuthToken) error {
+	return r.db.Delete(token).Error
 }
 
 func (r *AuthTokenRepository) GetById(id int64) (*models.AuthToken, error) {

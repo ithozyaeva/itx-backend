@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"ithozyeva/config"
+	"ithozyeva/internal/utils"
 )
 
 type TelegramService struct {
@@ -34,8 +35,7 @@ type TelegramAuthResponse struct {
 
 // GenerateAuthToken генерирует токен для авторизации
 func (s *TelegramService) GenerateAuthToken(userID int64) string {
-	// Здесь можно использовать JWT или другой механизм генерации токена
-	// Для простоты используем хеш от ID пользователя
-	token := fmt.Sprintf("tg_%d", userID)
+	token := utils.HashToken(fmt.Sprintf("%d", userID))
+
 	return token
 }

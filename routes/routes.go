@@ -16,7 +16,7 @@ func SetupRoutes(app *fiber.App, db *gorm.DB) {
 	// Маршруты для авторизации через Telegram
 	auth := app.Group("/api/auth")
 	auth.Post("/telegram", telegramAuthHandler.Authenticate)
-	auth.Post("/telegramFromBot", telegramAuthHandler.HandleBotMessage)
+	auth.Post("/telegram-from-bot", telegramAuthHandler.HandleBotMessage)
 
 	// Маршруты для аутентификации в админ панели
 	// TODO: Рассмотреть вариант авторизации в админке через тг + роль admin у member (подумать о его переименование в user, или же оставить тотальное разделение между public и admin зонами)
