@@ -24,13 +24,9 @@ func SetupRoutes(app *fiber.App, db *gorm.DB) {
 	auth.Post("/login", userHandler.Login)
 	auth.Post("/refresh", userHandler.RefreshToken)
 
-	// Защищенные маршруты
-	protected := app.Group("/api", authMiddleware.RequireAuth)
-	// Здесь будут защищенные маршруты
-
 	// Маршруты для менторов
 	mentorHandler := handler.NewMentorHandler()
-	mentors := protected.Group("/mentors")
+	mentors := app.Group("/api/mentors")
 	mentors.Get("/", mentorHandler.GetAllWithRelations)
 	mentors.Get("/:id", mentorHandler.GetById)
 	mentors.Post("/", mentorHandler.Create)
@@ -39,6 +35,10 @@ func SetupRoutes(app *fiber.App, db *gorm.DB) {
 	mentors.Post("/findByTag", mentorHandler.FindByTag)
 	mentors.Post("/review", mentorHandler.AddReviewToService)
 	mentors.Get("/:id/services", mentorHandler.GetServices)
+
+	// Защищенные маршруты
+	protected := app.Group("/api", authMiddleware.RequireAuth)
+	// Здесь будут защищенные маршруты
 
 	// Маршруты для профессиональных тегов
 	profTagHandler := handler.NewProfTagsHandler()
