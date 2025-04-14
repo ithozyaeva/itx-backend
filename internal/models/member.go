@@ -1,9 +1,12 @@
 package models
 
 type Member struct {
-	Id   int64  `json:"id"`
-	Tg   string `json:"tg"`
-	Name string `json:"name"`
+	Id         int64  `json:"id"`
+	Username   string `json:"tg"`
+	TelegramID int64  `json:"telegramID"`
+	FirstName  string `json:"firstName"`
+	LastName   string `json:"lastName"`
+	Role       string `json:"role"`
 }
 
 type ReviewOnCommunity struct {
@@ -32,10 +35,12 @@ type ReviewOnCommunityRequest struct {
 
 // MemberModel представляет модель участника с дополнительной информацией
 type MemberModel struct {
-	Id       int64  `json:"id"`
-	Tg       string `json:"tg"`
-	Name     string `json:"name"`
-	IsMentor bool   `json:"isMentor"`
+	Id         int64  `json:"id"`
+	TelegramID int64  `json:"telegramID"`
+	Username   string `json:"tg"`
+	FirstName  string `json:"firstName"`
+	LastName   string `json:"lastName"`
+	IsMentor   bool   `json:"isMentor"`
 }
 
 func (ReviewOnCommunity) TableName() string {
