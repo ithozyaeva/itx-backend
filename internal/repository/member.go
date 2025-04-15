@@ -75,14 +75,14 @@ func (r *MemberRepository) Search(limit *int, offset *int) ([]models.MemberModel
 	var result []models.MemberModel
 	for rows.Next() {
 		var id, tgId int64
-		var tg, firstName, lastName string
+		var username, firstName, lastName string
 		var isMentor bool
-		if err := rows.Scan(&id, &tg, &firstName, &lastName, &tgId, &isMentor); err != nil {
+		if err := rows.Scan(&id, &username, &firstName, &lastName, &tgId, &isMentor); err != nil {
 			return nil, 0, err
 		}
 		result = append(result, models.MemberModel{
 			Id:         id,
-			Username:   tg,
+			Username:   username,
 			TelegramID: tgId,
 			FirstName:  firstName,
 			LastName:   lastName,

@@ -1,10 +1,13 @@
 package middleware
 
 import (
+	"ithozyeva/config"
 	"ithozyeva/internal/repository"
 	"ithozyeva/internal/utils"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/gorm"
 )
 
@@ -19,6 +22,23 @@ func NewAuthMiddleware(db *gorm.DB) *AuthMiddleware {
 }
 
 func (m *AuthMiddleware) RequireAuth(c *fiber.Ctx) error {
+	// Проверяем JWT токен
+	authHeader := c.Get("Authorization")
+	if authHeader != "" {
+		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+		if tokenStr != "" {
+			token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+				return []byte(config.CFG.JwtSecret), nil
+			})
+
+			if err == nil && token.Valid {
+				// Если JWT токен валиден, продолжаем
+				return c.Next()
+			}
+		}
+	}
+
+	// Если JWT токен не валиден или отсутствует, проверяем Telegram токен
 	telegramToken := c.Get("X-Telegram-User-Token")
 	if telegramToken == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
