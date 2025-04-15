@@ -9,25 +9,55 @@ import (
 )
 
 func SetupRoutes(app *fiber.App, db *gorm.DB) {
+	SetupPublicRoutes(app, db)
+	SetupPrivateRoutes(app, db)
+}
+func SetupPublicRoutes(app *fiber.App, db *gorm.DB) {
 	// Инициализация сервисов и репозиториев
 	telegramAuthHandler := handler.NewTelegramAuthHandler()
-	authMiddleware := middleware.NewAuthMiddleware(db)
+
+	api := app.Group("/api")
 
 	// Маршруты для авторизации через Telegram
-	auth := app.Group("/api/auth")
+	auth := api.Group("/auth")
 	auth.Post("/telegram", telegramAuthHandler.Authenticate)
 	auth.Post("/telegram-from-bot", telegramAuthHandler.HandleBotMessage)
 
+	userHandler := handler.NewUserHandler()
 	// Маршруты для аутентификации в админ панели
 	// TODO: Рассмотреть вариант авторизации в админке через тг + роль admin у member (подумать о его переименование в user, или же оставить тотальное разделение между public и admin зонами)
-	userHandler := handler.NewUserHandler()
 	auth.Post("/login", userHandler.Login)
 	auth.Post("/refresh", userHandler.RefreshToken)
 
+	mentorHandler := handler.NewMentorHandler()
+	api.Get("/mentors", mentorHandler.GetAllWithRelations)
+
+	// Маршруты для профессиональных тегов
+	profTagHandler := handler.NewProfTagsHandler()
+	api.Get("/profTags", profTagHandler.Search)
+
+	// Маршруты для участников
+	memberHandler := handler.NewMembersHandler()
+	api.Get("/members", memberHandler.Search)
+
+	// Маршруты для отзывов на услуги
+	reviewOnServiceHandler := handler.NewReviewOnServiceHandler()
+	api.Get("/reviews-on-service", reviewOnServiceHandler.GetReviewsWithMentorInfo)
+
+	// Маршруты для отзывов о сообществе
+	reviewHandler := handler.NewReviewOnCommunityHandler()
+	api.Get("/reviews", reviewHandler.GetAllWithAuthor)
+}
+
+func SetupPrivateRoutes(app *fiber.App, db *gorm.DB) {
+	authMiddleware := middleware.NewAuthMiddleware(db)
+
+	// Защищенные маршруты
+	protected := app.Group("/api", authMiddleware.RequireAuth)
+
 	// Маршруты для менторов
 	mentorHandler := handler.NewMentorHandler()
-	mentors := app.Group("/api/mentors")
-	mentors.Get("/", mentorHandler.GetAllWithRelations)
+	mentors := protected.Group("/mentors")
 	mentors.Get("/:id", mentorHandler.GetById)
 	mentors.Post("/", mentorHandler.Create)
 	mentors.Put("/:id", mentorHandler.Update)
@@ -36,14 +66,11 @@ func SetupRoutes(app *fiber.App, db *gorm.DB) {
 	mentors.Post("/review", mentorHandler.AddReviewToService)
 	mentors.Get("/:id/services", mentorHandler.GetServices)
 
-	// Защищенные маршруты
-	protected := app.Group("/api", authMiddleware.RequireAuth)
 	// Здесь будут защищенные маршруты
 
 	// Маршруты для профессиональных тегов
 	profTagHandler := handler.NewProfTagsHandler()
 	profTags := protected.Group("/profTags")
-	profTags.Get("/", profTagHandler.Search)
 	profTags.Get("/:id", profTagHandler.GetById)
 	profTags.Post("/", profTagHandler.Create)
 	profTags.Put("/", profTagHandler.Update)
@@ -52,7 +79,6 @@ func SetupRoutes(app *fiber.App, db *gorm.DB) {
 	// Маршруты для участников
 	memberHandler := handler.NewMembersHandler()
 	members := protected.Group("/members")
-	members.Get("/", memberHandler.Search)
 	members.Get("/:id", memberHandler.GetById)
 	members.Post("/", memberHandler.Create)
 	members.Put("/", memberHandler.Update)
@@ -70,7 +96,6 @@ func SetupRoutes(app *fiber.App, db *gorm.DB) {
 	// Маршруты для отзывов на услуги
 	reviewOnServiceHandler := handler.NewReviewOnServiceHandler()
 	reviewsOnService := protected.Group("/reviews-on-service")
-	reviewsOnService.Get("/", reviewOnServiceHandler.GetReviewsWithMentorInfo)
 	reviewsOnService.Get("/:id", reviewOnServiceHandler.GetById)
 	reviewsOnService.Post("/", reviewOnServiceHandler.CreateReview)
 	reviewsOnService.Put("/:id", reviewOnServiceHandler.Update)
