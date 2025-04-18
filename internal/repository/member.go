@@ -150,12 +150,14 @@ func (r *MemberRepository) GetTodayBirthdays() ([]string, error) {
 			username
 		FROM members
 		WHERE
+			role = ?
+			AND
     		DATE_PART('day', birthday) = date_part('day', CURRENT_DATE)
 			AND
     		DATE_PART('month', birthday) = date_part('month', CURRENT_DATE)
 	`
 
-	rows, err := database.DB.Raw(query).Rows()
+	rows, err := database.DB.Raw(query, models.MemberRoleSubscriber).Rows()
 	if err != nil {
 		return nil, err
 	}

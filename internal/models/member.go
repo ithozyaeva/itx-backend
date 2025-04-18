@@ -4,13 +4,22 @@ import (
 	"time"
 )
 
+const (
+	MemberRoleUnsubscriber MemberRole = "UNSUBSCRIBER"
+	MemberRoleSubscriber  MemberRole = "SUBSCRIBER"
+	MemberRoleMentor      MemberRole = "MENTOR"
+	MemberRoleAdmin       MemberRole = "ADMIN"
+)
+
+type MemberRole string
+
 type Member struct {
 	Id         int64     `gorm:"primaryKey"`
 	Username   string    `gorm:"column:username"`
 	TelegramID int64     `gorm:"column:telegram_id"`
 	FirstName  string    `gorm:"column:first_name"`
 	LastName   string    `gorm:"column:last_name"`
-	Role       string    `json:"role"`
+	Role       MemberRole `json:"role"`
 	Birthday   *time.Time `gorm:"column:birthday"`
 }
 
