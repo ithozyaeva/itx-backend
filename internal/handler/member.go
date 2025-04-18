@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"ithozyeva/internal/models"
 	"ithozyeva/internal/service"
 	"strconv"
