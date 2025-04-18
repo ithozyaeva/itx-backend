@@ -127,21 +127,27 @@ func (r *MemberRepository) GetById(id int64) (*models.MemberModel, error) {
 	return result, nil
 }
 
-// UpdateBirthday обновляет дату рождения участника
-func (r *MemberRepository) UpdateBirthday(memberID int64, birthday time.Time) error {
-	result := database.DB.Model(&models.Member{}).
-		Where("id = ?", memberID).
-		Update("birthday", birthday)
 
+func (r *MemberRepository) Update(member *models.Member) (*models.Member, error) {
+	result := database.DB.Model(&models.Member{}).
+		Where("id = ?", member.Id).
+		Update("birthday", member.Birthday).
+		Update("first_name", member.FirstName).
+		Update("last_name", member.LastName)
 	if result.Error != nil {
-		return result.Error
+		return nil, result.Error
 	}
 
 	if result.RowsAffected == 0 {
-		return fmt.Errorf("member not found")
+		return nil, fmt.Errorf("member not found")
 	}
 
-	return nil
+	member, err := r.GetMemberByTelegram(member.Username)
+	if err != nil {
+		return nil, err
+	}
+
+	return member, nil
 }
 
 func (r *MemberRepository) GetTodayBirthdays() ([]string, error) {

@@ -80,9 +80,8 @@ func SetupPrivateRoutes(app *fiber.App, db *gorm.DB) {
 	memberHandler := handler.NewMembersHandler()
 	members := protected.Group("/members")
 	members.Get("/me", memberHandler.Me)
-	members.Post("/me/update-birthday", memberHandler.UpdateBirthday)
+	members.Patch("/me", memberHandler.Update)
 	members.Post("/", memberHandler.Create)
-	members.Put("/", memberHandler.Update)
 	members.Get("/:id", memberHandler.GetById)
 	members.Delete("/:id", memberHandler.Delete)
 

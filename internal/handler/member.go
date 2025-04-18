@@ -69,14 +69,31 @@ func (h *MembersHandler) Create(c *fiber.Ctx) error {
 	return c.JSON(result)
 }
 
+
+type UpdateRequest struct {
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Birthday  string `json:"birthday"`
+}
+
+
 func (h *MembersHandler) Update(c *fiber.Ctx) error {
-	request := new(models.Member)
+	request := new(UpdateRequest)
 	err := c.BodyParser(request)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный запрос"})
 	}
+	parsedDate, err := time.Parse("2006-01-02", request.Birthday)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный формат даты. Используйте формат YYYY-MM-DD"})
+	}
 
-	result, err := h.svc.Update(request)
+	member := c.Locals("member").(*models.Member)
+	member.FirstName = request.FirstName
+	member.LastName = request.LastName
+	member.Birthday = &parsedDate
+
+	result, err := h.svc.Update(member)
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
@@ -102,28 +119,6 @@ func (h *MembersHandler) Delete(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusNoContent)
 }
 
-type UpdateBirthdayRequest struct {
-	Birthday string `json:"birthday"`
-}
-
-func (h *MembersHandler) UpdateBirthday(c *fiber.Ctx) error {
-	request := new(UpdateBirthdayRequest)
-	err := c.BodyParser(request)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный запрос"})
-	}
-	parsedDate, err := time.Parse("2006-01-02", request.Birthday)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный формат даты. Используйте формат YYYY-MM-DD"})
-	}
-
-	member := c.Locals("member").(*models.Member)
-	if err := h.svc.UpdateBirthday(member.Id, parsedDate); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
-	}
-
-	return c.SendStatus(fiber.StatusOK)
-}
 
 func (h *MembersHandler) Me(c *fiber.Ctx) error {
 	member := c.Locals("member").(*models.Member)

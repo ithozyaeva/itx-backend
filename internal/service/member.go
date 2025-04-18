@@ -3,7 +3,6 @@ package service
 import (
 	"ithozyeva/internal/models"
 	"ithozyeva/internal/repository"
-	"time"
 )
 
 // MemberRepoAdapter адаптер для репозитория участников
@@ -70,9 +69,9 @@ func (s *MemberService) GetById(id int64) (*models.MemberModel, error) {
 	return s.repo.GetById(id)
 }
 
-// UpdateBirthday обновляет дату рождения участника
-func (s *MemberService) UpdateBirthday(memberID int64, birthday time.Time) error {
-	return s.repo.UpdateBirthday(memberID, birthday)
+// Update обновляет участника
+func (s *MemberService) Update(member *models.Member) (*models.Member, error) {
+	return s.repo.Update(member)
 }
 
 func (s *MemberService) GetTodayBirthdays() ([]string, error) {
