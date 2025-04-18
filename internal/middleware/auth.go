@@ -12,12 +12,14 @@ import (
 )
 
 type AuthMiddleware struct {
-	userRepo *repository.AuthTokenRepository
+	userRepo   *repository.AuthTokenRepository
+	memberRepo *repository.MemberRepository
 }
 
 func NewAuthMiddleware(db *gorm.DB) *AuthMiddleware {
 	return &AuthMiddleware{
 		userRepo: repository.NewAuthTokenRepository(),
+		memberRepo: repository.NewMemberRepository(),
 	}
 }
 
@@ -59,15 +61,15 @@ func (m *AuthMiddleware) RequireAuth(c *fiber.Ctx) error {
 		})
 	}
 
-	user, err := m.userRepo.GetByTelegramID(authToken.TelegramID)
+	member, err := m.memberRepo.GetByTelegramID(authToken.TelegramID)
 	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"error": "User not found",
+			"error": "Member not found",
 		})
 	}
 
 	// Добавляем информацию о пользователе в контекст
-	c.Locals("user", user)
+	c.Locals("member", member)
 
 	return c.Next()
 }

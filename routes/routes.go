@@ -79,9 +79,11 @@ func SetupPrivateRoutes(app *fiber.App, db *gorm.DB) {
 	// Маршруты для участников
 	memberHandler := handler.NewMembersHandler()
 	members := protected.Group("/members")
-	members.Get("/:id", memberHandler.GetById)
+	members.Get("/me", memberHandler.Me)
+	members.Post("/me/update-birthday", memberHandler.UpdateBirthday)
 	members.Post("/", memberHandler.Create)
 	members.Put("/", memberHandler.Update)
+	members.Get("/:id", memberHandler.GetById)
 	members.Delete("/:id", memberHandler.Delete)
 
 	// Маршруты для отзывов о сообществе

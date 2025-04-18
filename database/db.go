@@ -23,18 +23,19 @@ type Migration struct {
 
 func SetupDatabase() error {
 	baseDSN := fmt.Sprintf(
-		"host=%s user=%s password=%s port=%s dbname=postgres sslmode=disable",
+		"host=%s user=%s password=%s port=%s dbname=%s sslmode=disable",
 		config.CFG.Database.Host,
 		config.CFG.Database.User,
 		config.CFG.Database.Password,
-		config.CFG.Database.Port)
+		config.CFG.Database.Port,
+		config.CFG.Database.Name,
+	)
 
 	baseDB, err := sql.Open("postgres", baseDSN)
 	if err != nil {
 		return fmt.Errorf("failed to connect to PostgreSQL: %w", err)
 	}
 	defer baseDB.Close()
-
 	var exists bool
 	query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = '%s')", config.CFG.Database.Name)
 	err = baseDB.QueryRow(query).Scan(&exists)

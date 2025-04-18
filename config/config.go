@@ -18,6 +18,7 @@ type Config struct {
 	CorsUrls      string
 	Port          string
 	TelegramToken string
+	TelegramMainChatID int64
 	PublicDomain  string
 	BackendDomain string
 }
@@ -41,6 +42,7 @@ func LoadConfig() {
 		CorsUrls:      viper.GetString("CORS_URLS"),
 		Port:          viper.GetString("PORT"),
 		TelegramToken: viper.GetString("TELEGRAM_BOT_TOKEN"),
+		TelegramMainChatID: viper.GetInt64("TELEGRAM_MAIN_CHAT_ID"),
 		PublicDomain:  viper.GetString("PUBLIC_DOMAIN"),
 		BackendDomain: viper.GetString("BACKEND_DOMAIN"),
 	}

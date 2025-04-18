@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"fmt"
 	"ithozyeva/internal/models"
 	"ithozyeva/internal/service"
 	"strconv"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -38,6 +40,7 @@ func (h *MembersHandler) Search(c *fiber.Ctx) error {
 
 // GetById получает участника по ID
 func (h *MembersHandler) GetById(c *fiber.Ctx) error {
+	fmt.Println("get by id", c.Params("id"))
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный ID"})
@@ -99,4 +102,32 @@ func (h *MembersHandler) Delete(c *fiber.Ctx) error {
 	}
 
 	return c.SendStatus(fiber.StatusNoContent)
+}
+
+type UpdateBirthdayRequest struct {
+	Birthday string `json:"birthday"`
+}
+
+func (h *MembersHandler) UpdateBirthday(c *fiber.Ctx) error {
+	request := new(UpdateBirthdayRequest)
+	err := c.BodyParser(request)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный запрос"})
+	}
+	parsedDate, err := time.Parse("2006-01-02", request.Birthday)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный формат даты. Используйте формат YYYY-MM-DD"})
+	}
+
+	member := c.Locals("member").(*models.Member)
+	if err := h.svc.UpdateBirthday(member.Id, parsedDate); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.SendStatus(fiber.StatusOK)
+}
+
+func (h *MembersHandler) Me(c *fiber.Ctx) error {
+	member := c.Locals("member").(*models.Member)
+	return c.JSON(member)
 }

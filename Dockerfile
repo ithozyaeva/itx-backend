@@ -3,6 +3,8 @@ FROM --platform=linux/amd64 golang:alpine AS builder
 ARG CGO_ENABLED=0
 WORKDIR /app
 
+ENV TZ=Europe/Moscow
+
 COPY go.mod go.sum ./
 
 RUN go mod download
