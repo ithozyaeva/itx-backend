@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"ithozyeva/database"
 	"ithozyeva/internal/models"
+	"time"
 )
 
 // Изменяем с type alias на новый тип
@@ -50,8 +51,14 @@ func (r *MemberRepository) Search(limit *int, offset *int) ([]models.MemberModel
 
 	// Создаем SQL-запрос с LEFT JOIN для получения всех участников и информации о том, являются ли они менторами
 	query := `
-		SELECT m.id, m.username, m.first_name, m.last_name, m.telegram_id, 
-		       CASE WHEN mt.id IS NOT NULL THEN true ELSE false END as is_mentor
+		SELECT 
+			m.id,
+			m.username,
+			m.first_name,
+			m.last_name,
+			m.telegram_id,
+			m.birthday,
+			CASE WHEN mt.id IS NOT NULL THEN true ELSE false END as is_mentor
 		FROM members m
 		LEFT JOIN mentors mt ON m.id = mt."memberId"
 	`
@@ -76,8 +83,9 @@ func (r *MemberRepository) Search(limit *int, offset *int) ([]models.MemberModel
 	for rows.Next() {
 		var id, tgId int64
 		var username, firstName, lastName string
+		var birthday time.Time
 		var isMentor bool
-		if err := rows.Scan(&id, &username, &firstName, &lastName, &tgId, &isMentor); err != nil {
+		if err := rows.Scan(&id, &username, &firstName, &lastName, &tgId, &birthday, &isMentor); err != nil {
 			return nil, 0, err
 		}
 		result = append(result, models.MemberModel{
@@ -87,6 +95,7 @@ func (r *MemberRepository) Search(limit *int, offset *int) ([]models.MemberModel
 			FirstName:  firstName,
 			LastName:   lastName,
 			IsMentor:   isMentor,
+			Birthday:   &birthday,
 		})
 	}
 
@@ -112,7 +121,61 @@ func (r *MemberRepository) GetById(id int64) (*models.MemberModel, error) {
 		FirstName: member.FirstName,
 		LastName:  member.LastName,
 		IsMentor:  count > 0, // Если есть хотя бы одна запись, то участник является ментором
+		Birthday:  member.Birthday,
 	}
 
 	return result, nil
+}
+
+
+func (r *MemberRepository) Update(member *models.Member) (*models.Member, error) {
+	result := database.DB.Model(&models.Member{}).
+		Where("id = ?", member.Id).
+		Update("birthday", member.Birthday).
+		Update("first_name", member.FirstName).
+		Update("last_name", member.LastName)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	if result.RowsAffected == 0 {
+		return nil, fmt.Errorf("member not found")
+	}
+
+	member, err := r.GetMemberByTelegram(member.Username)
+	if err != nil {
+		return nil, err
+	}
+
+	return member, nil
+}
+
+func (r *MemberRepository) GetTodayBirthdays() ([]string, error) {
+	query := `
+		SELECT 
+			username
+		FROM members
+		WHERE
+			role = ?
+			AND
+    		DATE_PART('day', birthday) = date_part('day', CURRENT_DATE)
+			AND
+    		DATE_PART('month', birthday) = date_part('month', CURRENT_DATE)
+	`
+
+	rows, err := database.DB.Raw(query, models.MemberRoleSubscriber).Rows()
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var usernames []string
+	for rows.Next() {
+		var username string
+		if err := rows.Scan(&username); err != nil {
+			return nil, err
+		}
+		usernames = append(usernames, username)
+	}
+	return usernames, nil
 }

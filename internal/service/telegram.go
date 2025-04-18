@@ -39,3 +39,4 @@ func (s *TelegramService) GenerateAuthToken(userID int64) string {
 
 	return token
 }
+

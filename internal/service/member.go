@@ -68,3 +68,12 @@ func (s *MemberService) Search(limit *int, offset *int) (*models.RegistrySearch[
 func (s *MemberService) GetById(id int64) (*models.MemberModel, error) {
 	return s.repo.GetById(id)
 }
+
+// Update обновляет участника
+func (s *MemberService) Update(member *models.Member) (*models.Member, error) {
+	return s.repo.Update(member)
+}
+
+func (s *MemberService) GetTodayBirthdays() ([]string, error) {
+	return s.repo.GetTodayBirthdays()
+}

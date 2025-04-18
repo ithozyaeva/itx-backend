@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"strings"
+	"time"
 
 	"ithozyeva/config"
 	"ithozyeva/internal/service"
@@ -16,7 +18,8 @@ import (
 
 type TelegramBot struct {
 	bot     *tgbotapi.BotAPI
-	service *service.TelegramService
+	tg_service *service.TelegramService
+	member *service.MemberService
 }
 
 func NewTelegramBot() (*TelegramBot, error) {
@@ -31,18 +34,27 @@ func NewTelegramBot() (*TelegramBot, error) {
 		return nil, fmt.Errorf("error creating bot: %v", err)
 	}
 
-	service, err := service.NewTelegramService()
+	tg_service, err := service.NewTelegramService()
 	if err != nil {
 		return nil, fmt.Errorf("error creating telegram service: %v", err)
 	}
 
+	member_service := service.NewMemberService()
+	if err != nil {
+		return nil, fmt.Errorf("error creating member service: %v", err)
+	}
+
 	return &TelegramBot{
 		bot:     bot,
-		service: service,
+		tg_service: tg_service,
+		member:  member_service,
 	}, nil
 }
 
 func (b *TelegramBot) Start() {
+	// Start birthday checker
+	go b.startBirthdayChecker()
+
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
@@ -60,6 +72,52 @@ func (b *TelegramBot) Start() {
 			}
 		}
 	}
+}
+
+func (b *TelegramBot) startBirthdayChecker() {
+	for {
+		now := time.Now()
+		next := time.Date(now.Year(), now.Month(), now.Day(), 9, 0, 0, 0, now.Location())
+		if now.After(next) {
+			next = next.Add(24 * time.Hour)
+		}
+		time.Sleep(time.Until(next))
+
+		b.checkBirthdays()
+	}
+}
+
+func (b *TelegramBot) checkBirthdays() {
+	birthdays, err := b.member.GetTodayBirthdays()
+	if err != nil {
+		log.Printf("Error checking birthdays: %v", err)
+		return
+	}
+
+	if len(birthdays) == 0 {
+		return
+	}
+
+	// Get random congratulations
+	congrats := []string{
+		"🎉 С днем рождения! Желаю счастья, здоровья и успехов!",
+		"🎂 Поздравляю с днем рождения! Пусть каждый день будет наполнен радостью!",
+		"🎊 С днем рождения! Пусть все мечты становятся реальностью!",
+		"🎈 С днем рождения! Желаю удачи во всех начинаниях!",
+		"🎁 Поздравляю с днем рождения! Пусть жизнь будет полна приятных сюрпризов!",
+	}
+	randomCongrats := congrats[rand.Intn(len(congrats))]
+
+	// Mention all users with birthdays
+	mentions := make([]string, len(birthdays))
+	for i, username := range birthdays {
+		mentions[i] = fmt.Sprintf("@%s", username)
+	}
+	mentionText := strings.Join(mentions, " ")
+
+	// Send birthday message
+	message := fmt.Sprintf("%s\n%s", mentionText, randomCongrats)
+	b.sendMessage(config.CFG.TelegramMainChatID, message)
 }
 
 func (b *TelegramBot) handleStartCommand(message *tgbotapi.Message) {
@@ -83,7 +141,7 @@ func (b *TelegramBot) handleStartCommand(message *tgbotapi.Message) {
 	log.Printf("Final redirect URL: %s", redirectUrl)
 
 	// Генерируем токен для пользователя
-	token := b.service.GenerateAuthToken(message.From.ID)
+	token := b.tg_service.GenerateAuthToken(message.From.ID)
 
 	log.Printf("Generated token for user %d: %s", message.From.ID, token)
 
