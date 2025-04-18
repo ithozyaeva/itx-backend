@@ -26,13 +26,12 @@ func (r *baseRepository[T]) Search(limit *int, offset *int) ([]T, int64, error) 
 	var entities []T
 	var count int64
 
+	query := r.db.Model(r.model)
+
 	// Сначала считаем общее количество всех записей
-	if err := r.db.Model(r.model).Count(&count).Error; err != nil {
+	if err := query.Debug().Count(&count).Error; err != nil {
 		return nil, 0, err
 	}
-
-	// Создаем запрос
-	query := r.db.Model(r.model)
 
 	// Применяем limit только если он передан
 	if limit != nil {
@@ -45,7 +44,7 @@ func (r *baseRepository[T]) Search(limit *int, offset *int) ([]T, int64, error) 
 	}
 
 	// Выполняем запрос
-	if err := query.Find(&entities).Error; err != nil {
+	if err := query.Debug().Find(&entities).Error; err != nil {
 		return nil, 0, err
 	}
 

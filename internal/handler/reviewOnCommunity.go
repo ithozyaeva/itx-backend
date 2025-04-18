@@ -3,6 +3,7 @@ package handler
 import (
 	"ithozyeva/internal/models"
 	"ithozyeva/internal/service"
+	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -40,7 +41,30 @@ func (h *ReviewOnCommunityHandler) AddReview(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный запрос"})
 	}
 
-	result, err := h.svc.CreateReviewOnCommunity(review)
+	err := h.svc.CreateReviewOnCommunity(review)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.SendStatus(fiber.StatusOK)
+}
+
+func (h *ReviewOnCommunityHandler) GetApproved(c *fiber.Ctx) error {
+	result, err := h.svc.GetApproved()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(result)
+}
+
+func (h *ReviewOnCommunityHandler) Approve(c *fiber.Ctx) error {
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный запрос"})
+	}
+
+	result, err := h.svc.Approve(int64(id))
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}

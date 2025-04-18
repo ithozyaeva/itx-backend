@@ -81,6 +81,7 @@ func (h *TelegramAuthHandler) HandleBotMessage(c *fiber.Ctx) error {
 			Username:   req.Username,
 			FirstName:  req.FirstName,
 			LastName:   req.LastName,
+			Role:       models.MemberRoleUnsubscriber,
 		}
 
 		createdUser, err := h.authService.CreateNewMember(newUser, req.Token)

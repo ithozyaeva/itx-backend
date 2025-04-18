@@ -28,6 +28,7 @@ func (a *MemberRepoAdapter) Search(limit *int, offset *int) ([]models.Member, in
 			Id:        model.Id,
 			Username:  model.Username,
 			FirstName: model.FirstName,
+			Role:      model.Role,
 		})
 	}
 
@@ -65,7 +66,7 @@ func (s *MemberService) Search(limit *int, offset *int) (*models.RegistrySearch[
 }
 
 // GetById получает участника по ID
-func (s *MemberService) GetById(id int64) (*models.MemberModel, error) {
+func (s *MemberService) GetById(id int64) (*models.Member, error) {
 	return s.repo.GetById(id)
 }
 

@@ -35,6 +35,7 @@ func SetupDatabase() error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to PostgreSQL: %w", err)
 	}
+
 	defer baseDB.Close()
 	var exists bool
 	query := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = '%s')", config.CFG.Database.Name)
