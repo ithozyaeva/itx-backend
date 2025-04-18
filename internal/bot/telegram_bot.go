@@ -17,9 +17,9 @@ import (
 )
 
 type TelegramBot struct {
-	bot     *tgbotapi.BotAPI
+	bot        *tgbotapi.BotAPI
 	tg_service *service.TelegramService
-	member *service.MemberService
+	member     *service.MemberService
 }
 
 func NewTelegramBot() (*TelegramBot, error) {
@@ -40,14 +40,11 @@ func NewTelegramBot() (*TelegramBot, error) {
 	}
 
 	member_service := service.NewMemberService()
-	if err != nil {
-		return nil, fmt.Errorf("error creating member service: %v", err)
-	}
 
 	return &TelegramBot{
-		bot:     bot,
+		bot:        bot,
 		tg_service: tg_service,
-		member:  member_service,
+		member:     member_service,
 	}, nil
 }
 

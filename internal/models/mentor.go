@@ -22,7 +22,7 @@ type MentorDbModel struct {
 
 type MentorModel struct {
 	Id         int64     `json:"id"`
-	Username   string    `json:"username"`
+	Username   string    `json:"tg"`
 	FirstName  string    `json:"firstName"`
 	LastName   string    `json:"lastName"`
 	Occupation string    `json:"occupation"`
