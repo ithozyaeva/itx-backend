@@ -40,7 +40,6 @@ func (h *MembersHandler) Search(c *fiber.Ctx) error {
 
 // GetById получает участника по ID
 func (h *MembersHandler) GetById(c *fiber.Ctx) error {
-	fmt.Println("get by id", c.Params("id"))
 	id, err := strconv.ParseInt(c.Params("id"), 10, 64)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный ID"})
