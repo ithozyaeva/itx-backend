@@ -13,6 +13,13 @@ const (
 
 type MemberRole string
 
+const (
+	ReviewOnCommunityStatusDraft    ReviewOnCommunityStatus = "DRAFT"
+	ReviewOnCommunityStatusApproved ReviewOnCommunityStatus = "APPROVED"
+)
+
+type ReviewOnCommunityStatus string
+
 type Member struct {
 	Id         int64      `json:"id" gorm:"primaryKey"`
 	Username   string     `json:"tg" gorm:"column:username"`
@@ -24,12 +31,12 @@ type Member struct {
 }
 
 type ReviewOnCommunity struct {
-	Id       int    `json:"id"`
-	AuthorId uint   `json:"authorId" gorm:"column:authorId"`
-	Author   Member `json:"author" gorm:"foreignKey:authorId"`
-	Text     string `json:"text"`
-	Date     string `json:"date"`
-	Status   string `json:"status"`
+	Id       int                     `json:"id"`
+	AuthorId uint                    `json:"authorId" gorm:"column:authorId"`
+	Author   Member                  `json:"author" gorm:"foreignKey:authorId"`
+	Text     string                  `json:"text"`
+	Date     string                  `json:"date"`
+	Status   ReviewOnCommunityStatus `json:"status"`
 }
 
 type ReviewOnCommunityWithAuthor struct {
@@ -41,11 +48,14 @@ type ReviewOnCommunityWithAuthor struct {
 	Date       string `json:"date"`
 }
 
-// ReviewOnCommunityRequest представляет запрос на создание отзыва о сообществе
-type ReviewOnCommunityRequest struct {
+type CreateReviewOnCommunityRequest struct {
 	Text     string  `json:"text" binding:"required"`
 	Date     *string `json:"date"`
-	AuthorTg string  `json:"authorTg" binding:"required"`
+	AuthorTg string  `json:"authorTg"`
+}
+
+type AddReviewOnCommunityRequest struct {
+	Text string `json:"text" binding:"required"`
 }
 
 // MemberModel представляет модель участника с дополнительной информацией

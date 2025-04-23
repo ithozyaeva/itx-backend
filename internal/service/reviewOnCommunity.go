@@ -33,22 +33,23 @@ func (s *ReviewOnCommunityService) GetAllWithAuthor(limit *int, offset *int) (*m
 }
 
 // CreateReviewOnCommunity создает новый отзыв о сообществе
-func (s *ReviewOnCommunityService) CreateReviewOnCommunity(req *models.ReviewOnCommunityRequest) error {
+func (s *ReviewOnCommunityService) CreateReviewOnCommunity(req *models.CreateReviewOnCommunityRequest) error {
 	// Найти пользователя по Telegram
 	member, err := repository.NewMemberRepository().GetMemberByTelegram(req.AuthorTg)
 	if err != nil {
 		return fmt.Errorf("не удалось найти пользователя с Telegram %s: %w", req.AuthorTg, err)
 	}
-	var date string = *req.Date
-	if (req.Date == nil) || (*req.Date == "") {
-		date = time.Now().Format("2006-01-02")
+
+	date := time.Now().Format("2006-01-02")
+	if req.Date != nil && *req.Date != "" {
+		date = *req.Date
 	}
 
 	review := &models.ReviewOnCommunity{
 		AuthorId: uint(member.Id),
 		Text:     req.Text,
 		Date:     date,
-		Status:   "DRAFT",
+		Status:   models.ReviewOnCommunityStatusDraft,
 	}
 
 	_, err = s.repo.Create(review)
@@ -74,7 +75,11 @@ func (s *ReviewOnCommunityService) Approve(id int64) (*models.ReviewOnCommunity,
 		return nil, err
 	}
 
-	existedReview.Status = "APPROVED"
+	if existedReview.Status == models.ReviewOnCommunityStatusApproved {
+		return existedReview, nil
+	}
+
+	existedReview.Status = models.ReviewOnCommunityStatusApproved
 
 	approvedReview, err := s.repo.Update(existedReview)
 	if err != nil {

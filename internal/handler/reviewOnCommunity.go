@@ -36,7 +36,27 @@ func (h *ReviewOnCommunityHandler) GetAllWithAuthor(c *fiber.Ctx) error {
 }
 
 func (h *ReviewOnCommunityHandler) AddReview(c *fiber.Ctx) error {
-	review := new(models.ReviewOnCommunityRequest)
+	review := new(models.AddReviewOnCommunityRequest)
+	if err := c.BodyParser(review); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный запрос"})
+	}
+
+	author := c.Locals("member").(*models.Member)
+
+	err := h.svc.CreateReviewOnCommunity(&models.CreateReviewOnCommunityRequest{
+		AuthorTg: author.Username,
+		Text:     review.Text,
+	})
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.SendStatus(fiber.StatusOK)
+}
+
+func (h *ReviewOnCommunityHandler) CreateReview(c *fiber.Ctx) error {
+	review := new(models.CreateReviewOnCommunityRequest)
 	if err := c.BodyParser(review); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный запрос"})
 	}
@@ -47,6 +67,7 @@ func (h *ReviewOnCommunityHandler) AddReview(c *fiber.Ctx) error {
 	}
 
 	return c.SendStatus(fiber.StatusOK)
+
 }
 
 func (h *ReviewOnCommunityHandler) GetApproved(c *fiber.Ctx) error {

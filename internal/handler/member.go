@@ -3,8 +3,8 @@ package handler
 import (
 	"ithozyeva/internal/models"
 	"ithozyeva/internal/service"
+	"ithozyeva/internal/utils"
 	"strconv"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -73,7 +73,7 @@ type UpdateRequest struct {
 	Id        int64             `json:"id"`
 	FirstName string            `json:"firstName"`
 	LastName  string            `json:"lastName"`
-	Birthday  string            `json:"birthday"`
+	Birthday  *string           `json:"birthday"`
 	Role      models.MemberRole `json:"role"`
 }
 
@@ -93,15 +93,12 @@ func (h *MembersHandler) Update(c *fiber.Ctx) error {
 	member.LastName = request.LastName
 	member.Role = request.Role
 
-	if request.Birthday != "" {
-		parsedDate, err := time.Parse("2006-01-02", request.Birthday)
-		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный формат даты. Используйте формат YYYY-MM-DD"})
-		}
-		member.Birthday = &parsedDate
-	} else {
-		member.Birthday = nil
+	parsedDate, err := utils.ParseDate(request.Birthday)
+
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err})
 	}
+	member.Birthday = parsedDate
 
 	result, err := h.svc.Update(member)
 
@@ -129,16 +126,13 @@ func (h *MembersHandler) UpdateProfile(c *fiber.Ctx) error {
 	member.FirstName = request.FirstName
 	member.LastName = request.LastName
 
-	// Обрабатываем birthday только если оно указано в запросе
-	if request.Birthday != "" {
-		parsedDate, err := time.Parse("2006-01-02", request.Birthday)
-		if err != nil {
-			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный формат даты. Используйте формат YYYY-MM-DD"})
-		}
-		member.Birthday = &parsedDate
-	} else {
-		member.Birthday = nil
+	parsedDate, err := utils.ParseDate(request.Birthday)
+
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err})
 	}
+	member.Birthday = parsedDate
+
 	result, err := h.svc.Update(member)
 
 	if err != nil {

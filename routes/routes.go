@@ -91,9 +91,10 @@ func SetupPrivateRoutes(app *fiber.App, db *gorm.DB) {
 	reviews := protected.Group("/reviews")
 	reviews.Post("/:id/approve", reviewHandler.Approve)
 	reviews.Get("/", reviewHandler.GetAllWithAuthor)
-	reviews.Post("/", reviewHandler.AddReview)
+	reviews.Post("/", reviewHandler.CreateReview)
+	reviews.Post("/add", reviewHandler.AddReview)
 	reviews.Get("/:id", reviewHandler.GetById)
-	reviews.Put("/:id", reviewHandler.Update)
+	reviews.Patch("/:id", reviewHandler.Update)
 	reviews.Delete("/:id", reviewHandler.Delete)
 
 	// Маршруты для отзывов на услуги
@@ -101,6 +102,6 @@ func SetupPrivateRoutes(app *fiber.App, db *gorm.DB) {
 	reviewsOnService := protected.Group("/reviews-on-service")
 	reviewsOnService.Get("/:id", reviewOnServiceHandler.GetById)
 	reviewsOnService.Post("/", reviewOnServiceHandler.CreateReview)
-	reviewsOnService.Put("/:id", reviewOnServiceHandler.Update)
+	reviewsOnService.Patch("/:id", reviewOnServiceHandler.Update)
 	reviewsOnService.Delete("/:id", reviewOnServiceHandler.Delete)
 }

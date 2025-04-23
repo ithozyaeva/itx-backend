@@ -115,12 +115,13 @@ func (r *MemberRepository) GetById(id int64) (*models.Member, error) {
 	}
 
 	result := &models.Member{
-		Id:        member.Id,
-		Username:  member.Username,
-		FirstName: member.FirstName,
-		LastName:  member.LastName,
-		Role:      member.Role,
-		Birthday:  member.Birthday,
+		Id:         member.Id,
+		Username:   member.Username,
+		FirstName:  member.FirstName,
+		TelegramID: member.TelegramID,
+		LastName:   member.LastName,
+		Role:       member.Role,
+		Birthday:   member.Birthday,
 	}
 
 	return result, nil
