@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"ithozyeva/internal/models"
 	"ithozyeva/internal/repository"
+	"time"
 )
 
 type ReviewOnCommunityService struct {
@@ -32,24 +33,58 @@ func (s *ReviewOnCommunityService) GetAllWithAuthor(limit *int, offset *int) (*m
 }
 
 // CreateReviewOnCommunity создает новый отзыв о сообществе
-func (s *ReviewOnCommunityService) CreateReviewOnCommunity(req *models.ReviewOnCommunityRequest) (*models.ReviewOnCommunity, error) {
+func (s *ReviewOnCommunityService) CreateReviewOnCommunity(req *models.CreateReviewOnCommunityRequest) error {
 	// Найти пользователя по Telegram
 	member, err := repository.NewMemberRepository().GetMemberByTelegram(req.AuthorTg)
 	if err != nil {
-		return nil, fmt.Errorf("не удалось найти пользователя с Telegram %s: %w", req.AuthorTg, err)
+		return fmt.Errorf("не удалось найти пользователя с Telegram %s: %w", req.AuthorTg, err)
+	}
+
+	date := time.Now().Format("2006-01-02")
+	if req.Date != nil && *req.Date != "" {
+		date = *req.Date
 	}
 
 	review := &models.ReviewOnCommunity{
 		AuthorId: uint(member.Id),
 		Text:     req.Text,
-		Date:     req.Date,
+		Date:     date,
+		Status:   models.ReviewOnCommunityStatusDraft,
 	}
 
-	// Сохранить отзыв в базе данных
-	createdReview, err := s.repo.Create(review)
+	_, err = s.repo.Create(review)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка при создании отзыва: %w", err)
+		return fmt.Errorf("ошибка при создании отзыва: %w", err)
 	}
 
-	return createdReview, nil
+	return nil
+}
+
+func (s *ReviewOnCommunityService) GetApproved() (*[]models.ReviewOnCommunity, error) {
+	reviews, err := s.repo.GetApproved(nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return reviews, nil
+}
+
+func (s *ReviewOnCommunityService) Approve(id int64) (*models.ReviewOnCommunity, error) {
+	existedReview, err := s.repo.GetById(id)
+	if err != nil {
+		return nil, err
+	}
+
+	if existedReview.Status == models.ReviewOnCommunityStatusApproved {
+		return existedReview, nil
+	}
+
+	existedReview.Status = models.ReviewOnCommunityStatusApproved
+
+	approvedReview, err := s.repo.Update(existedReview)
+	if err != nil {
+		return nil, err
+	}
+
+	return approvedReview, nil
 }

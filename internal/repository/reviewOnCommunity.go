@@ -40,3 +40,13 @@ func (r *ReviewOnCommunityRepository) GetAllWithAuthor(limit *int, offset *int) 
 
 	return reviews, count, nil
 }
+
+func (r *ReviewOnCommunityRepository) GetApproved(review *models.ReviewOnCommunity) (*[]models.ReviewOnCommunity, error) {
+	var reviews []models.ReviewOnCommunity
+
+	if err := database.DB.Model(&models.ReviewOnCommunity{}).Preload("Author").Where("status = ?", models.ReviewOnCommunityStatusApproved).Find(&reviews).Error; err != nil {
+		return nil, err
+	}
+
+	return &reviews, nil
+}

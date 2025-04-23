@@ -46,7 +46,7 @@ func SetupPublicRoutes(app *fiber.App, db *gorm.DB) {
 
 	// Маршруты для отзывов о сообществе
 	reviewHandler := handler.NewReviewOnCommunityHandler()
-	api.Get("/reviews", reviewHandler.GetAllWithAuthor)
+	api.Get("/review-on-community", reviewHandler.GetApproved)
 }
 
 func SetupPrivateRoutes(app *fiber.App, db *gorm.DB) {
@@ -80,18 +80,21 @@ func SetupPrivateRoutes(app *fiber.App, db *gorm.DB) {
 	memberHandler := handler.NewMembersHandler()
 	members := protected.Group("/members")
 	members.Get("/me", memberHandler.Me)
-	members.Patch("/me", memberHandler.Update)
+	members.Patch("/me", memberHandler.UpdateProfile)
 	members.Post("/", memberHandler.Create)
 	members.Get("/:id", memberHandler.GetById)
+	members.Put("/:id", memberHandler.Update)
 	members.Delete("/:id", memberHandler.Delete)
 
 	// Маршруты для отзывов о сообществе
 	reviewHandler := handler.NewReviewOnCommunityHandler()
 	reviews := protected.Group("/reviews")
+	reviews.Post("/:id/approve", reviewHandler.Approve)
 	reviews.Get("/", reviewHandler.GetAllWithAuthor)
-	reviews.Post("/", reviewHandler.AddReview)
+	reviews.Post("/", reviewHandler.CreateReview)
+	reviews.Post("/add", reviewHandler.AddReview)
 	reviews.Get("/:id", reviewHandler.GetById)
-	reviews.Put("/:id", reviewHandler.Update)
+	reviews.Patch("/:id", reviewHandler.Update)
 	reviews.Delete("/:id", reviewHandler.Delete)
 
 	// Маршруты для отзывов на услуги
@@ -99,6 +102,6 @@ func SetupPrivateRoutes(app *fiber.App, db *gorm.DB) {
 	reviewsOnService := protected.Group("/reviews-on-service")
 	reviewsOnService.Get("/:id", reviewOnServiceHandler.GetById)
 	reviewsOnService.Post("/", reviewOnServiceHandler.CreateReview)
-	reviewsOnService.Put("/:id", reviewOnServiceHandler.Update)
+	reviewsOnService.Patch("/:id", reviewOnServiceHandler.Update)
 	reviewsOnService.Delete("/:id", reviewOnServiceHandler.Delete)
 }

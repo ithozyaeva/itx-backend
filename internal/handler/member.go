@@ -3,8 +3,8 @@ package handler
 import (
 	"ithozyeva/internal/models"
 	"ithozyeva/internal/service"
+	"ithozyeva/internal/utils"
 	"strconv"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -69,13 +69,13 @@ func (h *MembersHandler) Create(c *fiber.Ctx) error {
 	return c.JSON(result)
 }
 
-
 type UpdateRequest struct {
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Birthday  string `json:"birthday"`
+	Id        int64             `json:"id"`
+	FirstName string            `json:"firstName"`
+	LastName  string            `json:"lastName"`
+	Birthday  *string           `json:"birthday"`
+	Role      models.MemberRole `json:"role"`
 }
-
 
 func (h *MembersHandler) Update(c *fiber.Ctx) error {
 	request := new(UpdateRequest)
@@ -83,15 +83,55 @@ func (h *MembersHandler) Update(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный запрос"})
 	}
-	parsedDate, err := time.Parse("2006-01-02", request.Birthday)
+
+	member, err := h.svc.GetById(request.Id)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный формат даты. Используйте формат YYYY-MM-DD"})
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Участник не найден"})
+	}
+
+	member.FirstName = request.FirstName
+	member.LastName = request.LastName
+	member.Role = request.Role
+
+	parsedDate, err := utils.ParseDate(request.Birthday)
+
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err})
+	}
+	member.Birthday = parsedDate
+
+	result, err := h.svc.Update(member)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(result)
+}
+
+type UpdateProfileRequest struct {
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Birthday  string `json:"birthday"`
+}
+
+func (h *MembersHandler) UpdateProfile(c *fiber.Ctx) error {
+	request := new(UpdateRequest)
+	err := c.BodyParser(request)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный запрос"})
 	}
 
 	member := c.Locals("member").(*models.Member)
 	member.FirstName = request.FirstName
 	member.LastName = request.LastName
-	member.Birthday = &parsedDate
+
+	parsedDate, err := utils.ParseDate(request.Birthday)
+
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err})
+	}
+	member.Birthday = parsedDate
 
 	result, err := h.svc.Update(member)
 
@@ -118,7 +158,6 @@ func (h *MembersHandler) Delete(c *fiber.Ctx) error {
 
 	return c.SendStatus(fiber.StatusNoContent)
 }
-
 
 func (h *MembersHandler) Me(c *fiber.Ctx) error {
 	member := c.Locals("member").(*models.Member)

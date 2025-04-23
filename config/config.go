@@ -15,7 +15,6 @@ type DatabaseConfig struct {
 type Config struct {
 	Database      DatabaseConfig
 	JwtSecret     []byte
-	CorsUrls      string
 	Port          string
 	TelegramToken string
 	TelegramMainChatID int64
@@ -39,7 +38,6 @@ func LoadConfig() {
 			Name:     viper.GetString("DB_NAME"),
 		},
 		JwtSecret:     []byte("jwt_secret"),
-		CorsUrls:      viper.GetString("CORS_URLS"),
 		Port:          viper.GetString("PORT"),
 		TelegramToken: viper.GetString("TELEGRAM_BOT_TOKEN"),
 		TelegramMainChatID: viper.GetInt64("TELEGRAM_MAIN_CHAT_ID"),

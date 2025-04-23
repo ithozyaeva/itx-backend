@@ -58,9 +58,11 @@ func (r *MemberRepository) Search(limit *int, offset *int) ([]models.MemberModel
 			m.last_name,
 			m.telegram_id,
 			m.birthday,
+			m.role,
 			CASE WHEN mt.id IS NOT NULL THEN true ELSE false END as is_mentor
 		FROM members m
 		LEFT JOIN mentors mt ON m.id = mt."memberId"
+		ORDER BY m.id
 	`
 
 	// Добавляем LIMIT и OFFSET, если они переданы
@@ -83,11 +85,13 @@ func (r *MemberRepository) Search(limit *int, offset *int) ([]models.MemberModel
 	for rows.Next() {
 		var id, tgId int64
 		var username, firstName, lastName string
-		var birthday time.Time
+		var role models.MemberRole
+		var birthday *time.Time
 		var isMentor bool
-		if err := rows.Scan(&id, &username, &firstName, &lastName, &tgId, &birthday, &isMentor); err != nil {
+		if err := rows.Scan(&id, &username, &firstName, &lastName, &tgId, &birthday, &role, &isMentor); err != nil {
 			return nil, 0, err
 		}
+
 		result = append(result, models.MemberModel{
 			Id:         id,
 			Username:   username,
@@ -95,7 +99,8 @@ func (r *MemberRepository) Search(limit *int, offset *int) ([]models.MemberModel
 			FirstName:  firstName,
 			LastName:   lastName,
 			IsMentor:   isMentor,
-			Birthday:   &birthday,
+			Birthday:   birthday,
+			Role:       role,
 		})
 	}
 
@@ -103,37 +108,33 @@ func (r *MemberRepository) Search(limit *int, offset *int) ([]models.MemberModel
 }
 
 // GetById получает участника по ID с проверкой на статус ментора
-func (r *MemberRepository) GetById(id int64) (*models.MemberModel, error) {
+func (r *MemberRepository) GetById(id int64) (*models.Member, error) {
 	var member models.Member
 	if err := database.DB.First(&member, id).Error; err != nil {
 		return nil, err
 	}
 
-	// Проверяем, является ли участник ментором
-	var count int64
-	if err := database.DB.Model(&models.MentorDbShortModel{}).Where("memberId = ?", id).Count(&count).Error; err != nil {
-		return nil, err
-	}
-
-	result := &models.MemberModel{
-		Id:        member.Id,
-		Username:  member.Username,
-		FirstName: member.FirstName,
-		LastName:  member.LastName,
-		IsMentor:  count > 0, // Если есть хотя бы одна запись, то участник является ментором
-		Birthday:  member.Birthday,
+	result := &models.Member{
+		Id:         member.Id,
+		Username:   member.Username,
+		FirstName:  member.FirstName,
+		TelegramID: member.TelegramID,
+		LastName:   member.LastName,
+		Role:       member.Role,
+		Birthday:   member.Birthday,
 	}
 
 	return result, nil
 }
-
 
 func (r *MemberRepository) Update(member *models.Member) (*models.Member, error) {
 	result := database.DB.Model(&models.Member{}).
 		Where("id = ?", member.Id).
 		Update("birthday", member.Birthday).
 		Update("first_name", member.FirstName).
-		Update("last_name", member.LastName)
+		Update("last_name", member.LastName).
+		Update("role", member.Role)
+
 	if result.Error != nil {
 		return nil, result.Error
 	}

@@ -58,7 +58,7 @@ func (r *ReviewOnServiceRepository) GetReviewsWithMentorInfo(limit *int, offset 
 			r."serviceId", 
 			s.name as service_name, 
 			s."ownerId" as mentor_id,
-			m.name as mentor_name,
+			m.username as mentor_name,
 			r.author, 
 			r.text, 
 			r.date
