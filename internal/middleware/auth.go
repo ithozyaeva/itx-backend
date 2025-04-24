@@ -18,12 +18,12 @@ type AuthMiddleware struct {
 
 func NewAuthMiddleware(db *gorm.DB) *AuthMiddleware {
 	return &AuthMiddleware{
-		userRepo: repository.NewAuthTokenRepository(),
+		userRepo:   repository.NewAuthTokenRepository(),
 		memberRepo: repository.NewMemberRepository(),
 	}
 }
 
-func (m *AuthMiddleware) RequireAuth(c *fiber.Ctx) error {
+func (m *AuthMiddleware) RequireJWTAuth(c *fiber.Ctx) error {
 	// Проверяем JWT токен
 	authHeader := c.Get("Authorization")
 	if authHeader != "" {
@@ -40,6 +40,12 @@ func (m *AuthMiddleware) RequireAuth(c *fiber.Ctx) error {
 		}
 	}
 
+	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+		"error": "Unauthorized",
+	})
+}
+
+func (m *AuthMiddleware) RequireTGAuth(c *fiber.Ctx) error {
 	// Если JWT токен не валиден или отсутствует, проверяем Telegram токен
 	telegramToken := c.Get("X-Telegram-User-Token")
 	if telegramToken == "" {
