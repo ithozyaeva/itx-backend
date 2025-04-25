@@ -24,20 +24,28 @@ func NewAuthMiddleware(db *gorm.DB) *AuthMiddleware {
 }
 
 func (m *AuthMiddleware) RequireJWTAuth(c *fiber.Ctx) error {
-	// Проверяем JWT токен
 	authHeader := c.Get("Authorization")
-	if authHeader != "" {
-		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-		if tokenStr != "" {
-			token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-				return []byte(config.CFG.JwtSecret), nil
-			})
 
-			if err == nil && token.Valid {
-				// Если JWT токен валиден, продолжаем
-				return c.Next()
-			}
-		}
+	if authHeader == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+
+	tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+
+	if tokenStr == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+
+	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+		return []byte(config.CFG.JwtSecret), nil
+	})
+
+	if err == nil && token.Valid {
+		return c.Next()
 	}
 
 	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
