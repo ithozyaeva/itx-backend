@@ -10,7 +10,8 @@ import (
 
 func SetupRoutes(app *fiber.App, db *gorm.DB) {
 	SetupPublicRoutes(app, db)
-	SetupPrivateRoutes(app, db)
+	SetupAdminRoutes(app, db)
+	SetupPlatformRoutes(app, db)
 }
 func SetupPublicRoutes(app *fiber.App, db *gorm.DB) {
 	// Инициализация сервисов и репозиториев
@@ -49,11 +50,11 @@ func SetupPublicRoutes(app *fiber.App, db *gorm.DB) {
 	api.Get("/review-on-community", reviewHandler.GetApproved)
 }
 
-func SetupPrivateRoutes(app *fiber.App, db *gorm.DB) {
+func SetupAdminRoutes(app *fiber.App, db *gorm.DB) {
 	authMiddleware := middleware.NewAuthMiddleware(db)
 
 	// Защищенные маршруты
-	protected := app.Group("/api", authMiddleware.RequireAuth)
+	protected := app.Group("/api", authMiddleware.RequireJWTAuth)
 
 	// Маршруты для менторов
 	mentorHandler := handler.NewMentorHandler()
@@ -79,8 +80,6 @@ func SetupPrivateRoutes(app *fiber.App, db *gorm.DB) {
 	// Маршруты для участников
 	memberHandler := handler.NewMembersHandler()
 	members := protected.Group("/members")
-	members.Get("/me", memberHandler.Me)
-	members.Patch("/me", memberHandler.UpdateProfile)
 	members.Post("/", memberHandler.Create)
 	members.Get("/:id", memberHandler.GetById)
 	members.Put("/:id", memberHandler.Update)
@@ -92,7 +91,6 @@ func SetupPrivateRoutes(app *fiber.App, db *gorm.DB) {
 	reviews.Post("/:id/approve", reviewHandler.Approve)
 	reviews.Get("/", reviewHandler.GetAllWithAuthor)
 	reviews.Post("/", reviewHandler.CreateReview)
-	reviews.Post("/add", reviewHandler.AddReview)
 	reviews.Get("/:id", reviewHandler.GetById)
 	reviews.Patch("/:id", reviewHandler.Update)
 	reviews.Delete("/:id", reviewHandler.Delete)
@@ -104,4 +102,22 @@ func SetupPrivateRoutes(app *fiber.App, db *gorm.DB) {
 	reviewsOnService.Post("/", reviewOnServiceHandler.CreateReview)
 	reviewsOnService.Patch("/:id", reviewOnServiceHandler.Update)
 	reviewsOnService.Delete("/:id", reviewOnServiceHandler.Delete)
+}
+
+func SetupPlatformRoutes(app *fiber.App, db *gorm.DB) {
+	authMiddleware := middleware.NewAuthMiddleware(db)
+
+	// Защищенные маршруты
+	protected := app.Group("/api", authMiddleware.RequireTGAuth)
+
+	// Маршруты для отзывов о сообществе
+	reviewHandler := handler.NewReviewOnCommunityHandler()
+	reviews := protected.Group("/reviews")
+	reviews.Post("/add", reviewHandler.AddReview)
+
+	// Маршруты для участников
+	memberHandler := handler.NewMembersHandler()
+	members := protected.Group("/members")
+	members.Get("/me", memberHandler.Me)
+	members.Patch("/me", memberHandler.UpdateProfile)
 }

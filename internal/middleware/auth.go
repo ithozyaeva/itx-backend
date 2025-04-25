@@ -18,28 +18,42 @@ type AuthMiddleware struct {
 
 func NewAuthMiddleware(db *gorm.DB) *AuthMiddleware {
 	return &AuthMiddleware{
-		userRepo: repository.NewAuthTokenRepository(),
+		userRepo:   repository.NewAuthTokenRepository(),
 		memberRepo: repository.NewMemberRepository(),
 	}
 }
 
-func (m *AuthMiddleware) RequireAuth(c *fiber.Ctx) error {
-	// Проверяем JWT токен
+func (m *AuthMiddleware) RequireJWTAuth(c *fiber.Ctx) error {
 	authHeader := c.Get("Authorization")
-	if authHeader != "" {
-		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
-		if tokenStr != "" {
-			token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-				return []byte(config.CFG.JwtSecret), nil
-			})
 
-			if err == nil && token.Valid {
-				// Если JWT токен валиден, продолжаем
-				return c.Next()
-			}
-		}
+	if authHeader == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
 	}
 
+	tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+
+	if tokenStr == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+
+	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+		return []byte(config.CFG.JwtSecret), nil
+	})
+
+	if err == nil && token.Valid {
+		return c.Next()
+	}
+
+	return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+		"error": "Unauthorized",
+	})
+}
+
+func (m *AuthMiddleware) RequireTGAuth(c *fiber.Ctx) error {
 	// Если JWT токен не валиден или отсутствует, проверяем Telegram токен
 	telegramToken := c.Get("X-Telegram-User-Token")
 	if telegramToken == "" {
