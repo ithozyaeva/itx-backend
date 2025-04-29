@@ -21,6 +21,7 @@ func SetupPublicRoutes(app *fiber.App, db *gorm.DB) {
 
 	// Маршруты для авторизации через Telegram
 	auth := api.Group("/auth")
+	auth.Post("/telegram/refresh", telegramAuthHandler.RefreshToken)
 	auth.Post("/telegram", telegramAuthHandler.Authenticate)
 	auth.Post("/telegram-from-bot", telegramAuthHandler.HandleBotMessage)
 
@@ -54,11 +55,12 @@ func SetupAdminRoutes(app *fiber.App, db *gorm.DB) {
 	authMiddleware := middleware.NewAuthMiddleware(db)
 
 	// Защищенные маршруты
-	protected := app.Group("/api", authMiddleware.RequireJWTAuth)
+	protected := app.Group("/api/admin", authMiddleware.RequireJWTAuth)
 
 	// Маршруты для менторов
 	mentorHandler := handler.NewMentorHandler()
 	mentors := protected.Group("/mentors")
+	mentors.Get("/", mentorHandler.Search)
 	mentors.Get("/:id", mentorHandler.GetById)
 	mentors.Post("/", mentorHandler.Create)
 	mentors.Put("/:id", mentorHandler.Update)
@@ -80,6 +82,7 @@ func SetupAdminRoutes(app *fiber.App, db *gorm.DB) {
 	// Маршруты для участников
 	memberHandler := handler.NewMembersHandler()
 	members := protected.Group("/members")
+	members.Get("/", memberHandler.Search)
 	members.Post("/", memberHandler.Create)
 	members.Get("/:id", memberHandler.GetById)
 	members.Put("/:id", memberHandler.Update)
@@ -108,7 +111,7 @@ func SetupPlatformRoutes(app *fiber.App, db *gorm.DB) {
 	authMiddleware := middleware.NewAuthMiddleware(db)
 
 	// Защищенные маршруты
-	protected := app.Group("/api", authMiddleware.RequireTGAuth)
+	protected := app.Group("/api/platform", authMiddleware.RequireTGAuth)
 
 	// Маршруты для отзывов о сообществе
 	reviewHandler := handler.NewReviewOnCommunityHandler()

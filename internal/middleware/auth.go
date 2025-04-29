@@ -25,7 +25,6 @@ func NewAuthMiddleware(db *gorm.DB) *AuthMiddleware {
 
 func (m *AuthMiddleware) RequireJWTAuth(c *fiber.Ctx) error {
 	authHeader := c.Get("Authorization")
-
 	if authHeader == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Unauthorized",
@@ -56,6 +55,7 @@ func (m *AuthMiddleware) RequireJWTAuth(c *fiber.Ctx) error {
 func (m *AuthMiddleware) RequireTGAuth(c *fiber.Ctx) error {
 	// Если JWT токен не валиден или отсутствует, проверяем Telegram токен
 	telegramToken := c.Get("X-Telegram-User-Token")
+
 	if telegramToken == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Unauthorized",

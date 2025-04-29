@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"ithozyeva/database"
 	"ithozyeva/internal/models"
+	"ithozyeva/internal/utils"
 	"time"
 )
 
@@ -99,7 +100,7 @@ func (r *MemberRepository) Search(limit *int, offset *int) ([]models.MemberModel
 			FirstName:  firstName,
 			LastName:   lastName,
 			IsMentor:   isMentor,
-			Birthday:   birthday,
+			Birthday:   utils.NewDateOnly(birthday),
 			Role:       role,
 		})
 	}

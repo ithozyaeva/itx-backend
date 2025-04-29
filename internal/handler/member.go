@@ -109,12 +109,6 @@ func (h *MembersHandler) Update(c *fiber.Ctx) error {
 	return c.JSON(result)
 }
 
-type UpdateProfileRequest struct {
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Birthday  string `json:"birthday"`
-}
-
 func (h *MembersHandler) UpdateProfile(c *fiber.Ctx) error {
 	request := new(UpdateRequest)
 	err := c.BodyParser(request)
