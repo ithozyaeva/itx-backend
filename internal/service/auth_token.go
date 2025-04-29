@@ -68,3 +68,7 @@ func (s *AuthTokenService) CreateOrUpdateToken(telegramID int64, token string) (
 
 	return authToken, nil
 }
+
+func (s *AuthTokenService) GetTokenByTelegramID(telegramID int64) (*models.AuthToken, error) {
+	return s.authRepo.GetByTelegramID(telegramID)
+}

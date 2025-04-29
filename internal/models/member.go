@@ -1,7 +1,7 @@
 package models
 
 import (
-	"time"
+	"ithozyeva/internal/utils"
 )
 
 const (
@@ -21,13 +21,13 @@ const (
 type ReviewOnCommunityStatus string
 
 type Member struct {
-	Id         int64      `json:"id" gorm:"primaryKey"`
-	Username   string     `json:"tg" gorm:"column:username"`
-	TelegramID int64      `json:"telegramID" gorm:"column:telegram_id"`
-	FirstName  string     `json:"firstName" gorm:"column:first_name"`
-	LastName   string     `json:"lastName" gorm:"column:last_name"`
-	Role       MemberRole `json:"role" gorm:"column:role"`
-	Birthday   *time.Time `json:"birthday" gorm:"column:birthday"`
+	Id         int64           `json:"id" gorm:"primaryKey"`
+	Username   string          `json:"tg" gorm:"column:username"`
+	TelegramID int64           `json:"telegramID" gorm:"column:telegram_id"`
+	FirstName  string          `json:"firstName" gorm:"column:first_name"`
+	LastName   string          `json:"lastName" gorm:"column:last_name"`
+	Role       MemberRole      `json:"role" gorm:"column:role"`
+	Birthday   *utils.DateOnly `json:"birthday" gorm:"column:birthday"`
 }
 
 type ReviewOnCommunity struct {
@@ -60,14 +60,14 @@ type AddReviewOnCommunityRequest struct {
 
 // MemberModel представляет модель участника с дополнительной информацией
 type MemberModel struct {
-	Id         int64      `json:"id"`
-	TelegramID int64      `json:"telegramID"`
-	Username   string     `json:"tg"`
-	FirstName  string     `json:"firstName"`
-	LastName   string     `json:"lastName"`
-	IsMentor   bool       `json:"isMentor"`
-	Birthday   *time.Time `json:"birthday"`
-	Role       MemberRole `json:"role"`
+	Id         int64           `json:"id"`
+	TelegramID int64           `json:"telegramID"`
+	Username   string          `json:"tg"`
+	FirstName  string          `json:"firstName"`
+	LastName   string          `json:"lastName"`
+	IsMentor   bool            `json:"isMentor"`
+	Birthday   *utils.DateOnly `json:"birthday"`
+	Role       MemberRole      `json:"role"`
 }
 
 func (ReviewOnCommunity) TableName() string {
