@@ -134,7 +134,8 @@ func (r *MemberRepository) Update(member *models.Member) (*models.Member, error)
 		Update("birthday", member.Birthday).
 		Update("first_name", member.FirstName).
 		Update("last_name", member.LastName).
-		Update("role", member.Role)
+		Update("role", member.Role).
+		Update("username", member.Username)
 
 	if result.Error != nil {
 		return nil, result.Error
