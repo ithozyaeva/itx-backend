@@ -75,6 +75,7 @@ type UpdateRequest struct {
 	LastName  string            `json:"lastName"`
 	Birthday  *string           `json:"birthday"`
 	Role      models.MemberRole `json:"role"`
+	Username  string            `json:"tg"`
 }
 
 func (h *MembersHandler) Update(c *fiber.Ctx) error {
@@ -92,6 +93,7 @@ func (h *MembersHandler) Update(c *fiber.Ctx) error {
 	member.FirstName = request.FirstName
 	member.LastName = request.LastName
 	member.Role = request.Role
+	member.Username = request.Username
 
 	parsedDate, err := utils.ParseDate(request.Birthday)
 

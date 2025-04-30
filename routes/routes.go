@@ -60,7 +60,7 @@ func SetupAdminRoutes(app *fiber.App, db *gorm.DB) {
 	// Маршруты для менторов
 	mentorHandler := handler.NewMentorHandler()
 	mentors := protected.Group("/mentors")
-	mentors.Get("/", mentorHandler.Search)
+	mentors.Get("/", mentorHandler.GetAllWithRelations)
 	mentors.Get("/:id", mentorHandler.GetById)
 	mentors.Post("/", mentorHandler.Create)
 	mentors.Put("/:id", mentorHandler.Update)
@@ -74,6 +74,7 @@ func SetupAdminRoutes(app *fiber.App, db *gorm.DB) {
 	// Маршруты для профессиональных тегов
 	profTagHandler := handler.NewProfTagsHandler()
 	profTags := protected.Group("/profTags")
+	profTags.Get("/", profTagHandler.Search)
 	profTags.Get("/:id", profTagHandler.GetById)
 	profTags.Post("/", profTagHandler.Create)
 	profTags.Put("/", profTagHandler.Update)
