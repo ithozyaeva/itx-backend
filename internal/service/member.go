@@ -10,35 +10,11 @@ type MemberRepoAdapter struct {
 	*repository.MemberRepository
 }
 
-// GetById реализует метод интерфейса BaseRepository
-func (a *MemberRepoAdapter) GetById(id int64) (*models.Member, error) {
-	return a.BaseRepository.GetById(id)
-}
-
-// Search реализует метод интерфейса BaseRepository
-func (a *MemberRepoAdapter) Search(limit *int, offset *int) ([]models.Member, int64, error) {
-	memberModels, count, err := a.BaseRepository.Search(limit, offset)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	var members []models.Member
-	for _, model := range memberModels {
-		members = append(members, models.Member{
-			Id:        model.Id,
-			Username:  model.Username,
-			FirstName: model.FirstName,
-			Role:      model.Role,
-		})
-	}
-
-	return members, int64(count), nil
-}
-
 // MemberService представляет сервис для работы с участниками
 type MemberService struct {
 	BaseService[models.Member]
-	repo *repository.MemberRepository
+	repo       *repository.MemberRepository
+	mentorRepo *repository.MentorRepository
 }
 
 // NewMemberService создает новый экземпляр сервиса участников
@@ -49,32 +25,22 @@ func NewMemberService() *MemberService {
 	return &MemberService{
 		BaseService: NewBaseService[models.Member](adapter),
 		repo:        repo,
+		mentorRepo:  repository.NewMentorRepository(),
 	}
-}
-
-// Search выполняет поиск участников с пагинацией
-func (s *MemberService) Search(limit *int, offset *int) (*models.RegistrySearch[models.MemberModel], error) {
-	members, count, err := s.repo.Search(limit, offset)
-	if err != nil {
-		return nil, err
-	}
-
-	return &models.RegistrySearch[models.MemberModel]{
-		Items: members,
-		Total: count,
-	}, nil
-}
-
-// GetById получает участника по ID
-func (s *MemberService) GetById(id int64) (*models.Member, error) {
-	return s.repo.GetById(id)
-}
-
-// Update обновляет участника
-func (s *MemberService) Update(member *models.Member) (*models.Member, error) {
-	return s.repo.Update(member)
 }
 
 func (s *MemberService) GetTodayBirthdays() ([]string, error) {
 	return s.repo.GetTodayBirthdays()
+}
+
+func (s *MemberService) GetMentor(memberId int64) (*models.MentorModel, error) {
+	mentorDb, err := s.mentorRepo.GetByMemberID(memberId)
+
+	if err != nil {
+		return nil, err
+	}
+
+	mentor := mentorDb.ToModel()
+
+	return &mentor, nil
 }

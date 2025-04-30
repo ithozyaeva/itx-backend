@@ -14,11 +14,11 @@ type MentorRepositoryInterface interface {
 	BaseRepository[models.MentorDbShortModel]
 	GetByIdFull(id int64) (*models.MentorDbModel, error)
 	GetServices(id int64) ([]models.Service, error)
-	FindByTag(tagId int64, limit int, offset int) ([]models.MentorDbModel, int64, error)
 	AddReviewToService(review *models.ReviewOnService) (*models.ReviewOnService, error)
-	CreateWithRelations(mentor *models.MentorCreateUpdateRequest) (*models.MentorDbModel, error)
-	UpdateWithRelations(mentor *models.MentorCreateUpdateRequest) (*models.MentorDbModel, error)
+	CreateWithRelations(mentor *models.MentorDbModel) (*models.MentorDbModel, error)
+	UpdateWithRelations(mentor *models.MentorDbModel) (*models.MentorDbModel, error)
 	GetAllWithRelations(limit *int, offset *int) ([]models.MentorDbModel, int64, error)
+	GetByMemberID(memberId int64) (*models.MentorDbModel, error)
 }
 
 // MentorRepository реализует интерфейс MentorRepositoryInterface
@@ -51,8 +51,8 @@ func (r *MentorRepository) GetByIdFull(id int64) (*models.MentorDbModel, error) 
 	}
 
 	// Загружаем профессиональные теги
-	var mentorTags []models.MentorTagDbModel
-	if err := tx.Where("\"mentorId\" = ?", id).Find(&mentorTags).Error; err != nil {
+	var mentorTags []models.MentorsTag
+	if err := tx.Where("mentor_id = ?", id).Find(&mentorTags).Error; err != nil {
 		return nil, err
 	}
 
@@ -92,30 +92,6 @@ func (r *MentorRepository) GetServices(id int64) ([]models.Service, error) {
 	return services, nil
 }
 
-// FindByTag находит менторов по тегу
-func (r *MentorRepository) FindByTag(tagId int64, limit int, offset int) ([]models.MentorDbModel, int64, error) {
-	var mentors []models.MentorDbModel
-	var count int64
-
-	query := database.DB.Model(&models.MentorDbModel{}).
-		Joins("JOIN mentorsTags ON mentorsTags.mentorId = mentors.id").
-		Where("mentorsTags.tagId = ?", tagId).
-		Preload("Member").
-		Preload("ProfTags").
-		Preload("Contacts").
-		Preload("Services")
-
-	if err := query.Count(&count).Error; err != nil {
-		return nil, 0, err
-	}
-
-	if err := query.Offset(offset).Limit(limit).Find(&mentors).Error; err != nil {
-		return nil, 0, err
-	}
-
-	return mentors, count, nil
-}
-
 // AddReviewToService добавляет отзыв к услуге ментора
 func (r *MentorRepository) AddReviewToService(review *models.ReviewOnService) (*models.ReviewOnService, error) {
 	if err := database.DB.Create(review).Error; err != nil {
@@ -125,7 +101,7 @@ func (r *MentorRepository) AddReviewToService(review *models.ReviewOnService) (*
 }
 
 // CreateWithRelations создает нового ментора со всеми связанными сущностями
-func (r *MentorRepository) CreateWithRelations(mentor *models.MentorCreateUpdateRequest) (*models.MentorDbModel, error) {
+func (r *MentorRepository) CreateWithRelations(mentor *models.MentorDbModel) (*models.MentorDbModel, error) {
 	// Начинаем транзакцию
 	tx := database.DB.Begin()
 	defer func() {
@@ -210,7 +186,7 @@ func (r *MentorRepository) CreateWithRelations(mentor *models.MentorCreateUpdate
 }
 
 // UpdateWithRelations обновляет ментора со всеми связанными сущностями
-func (r *MentorRepository) UpdateWithRelations(mentor *models.MentorCreateUpdateRequest) (*models.MentorDbModel, error) {
+func (r *MentorRepository) UpdateWithRelations(mentor *models.MentorDbModel) (*models.MentorDbModel, error) {
 	// Начинаем транзакцию
 	tx := database.DB.Begin()
 	defer func() {
@@ -286,12 +262,12 @@ func (r *MentorRepository) UpdateWithRelations(mentor *models.MentorCreateUpdate
 }
 
 // handleProfTags обрабатывает профессиональные теги
-func (r *MentorRepository) handleProfTags(tx *gorm.DB, mentorId int64, tagRequests []models.ProfTagRequest) ([]models.ProfTag, error) {
+func (r *MentorRepository) handleProfTags(tx *gorm.DB, mentorId int64, tagRequests []models.ProfTag) ([]models.ProfTag, error) {
 	var result []models.ProfTag
 
 	// Получаем существующие связи
-	var existingLinks []models.MentorTagDbModel
-	if err := tx.Where("\"mentorId\" = ?", mentorId).Find(&existingLinks).Error; err != nil {
+	var existingLinks []models.MentorsTag
+	if err := tx.Where("mentor_id = ?", mentorId).Find(&existingLinks).Error; err != nil {
 		return nil, err
 	}
 
@@ -350,11 +326,11 @@ func (r *MentorRepository) handleProfTags(tx *gorm.DB, mentorId int64, tagReques
 
 		// Если связи нет, создаем её
 		if !existingTagsMap[tag.Id] {
-			mentorTag := models.MentorTagDbModel{
+			mentorTag := models.MentorsTag{
 				MentorId: mentorId,
 				TagId:    tag.Id,
 			}
-			if err := tx.Table("mentorsTags").Create(&mentorTag).Error; err != nil {
+			if err := tx.Table("mentors_tags").Create(&mentorTag).Error; err != nil {
 				return nil, err
 			}
 		}
@@ -366,7 +342,7 @@ func (r *MentorRepository) handleProfTags(tx *gorm.DB, mentorId int64, tagReques
 	// Удаляем связи, которых нет в запросе
 	for tagId := range existingTagsMap {
 		// Используем Raw SQL с правильными именами столбцов в кавычках
-		if err := tx.Exec(`DELETE FROM "mentorsTags" WHERE "mentorId" = ? AND "tagId" = ?`, mentorId, tagId).Error; err != nil {
+		if err := tx.Exec(`DELETE FROM "mentors_tags" WHERE "mentor_id" = ? AND "tag_id" = ?`, mentorId, tagId).Error; err != nil {
 			return nil, err
 		}
 	}
@@ -539,8 +515,8 @@ func (r *MentorRepository) GetAllWithRelations(limit *int, offset *int) ([]model
 		}
 
 		// Загружаем профессиональные теги
-		var mentorTags []models.MentorTagDbModel
-		if err := tx.Where("\"mentorId\" = ?", mentors[i].Id).Find(&mentorTags).Error; err != nil {
+		var mentorTags []models.MentorsTag
+		if err := tx.Where("mentor_id = ?", mentors[i].Id).Find(&mentorTags).Error; err != nil {
 			return nil, 0, err
 		}
 
@@ -569,4 +545,21 @@ func (r *MentorRepository) GetAllWithRelations(limit *int, offset *int) ([]model
 
 	tx.Commit()
 	return mentors, count, nil
+}
+
+func (r *MentorRepository) GetByMemberID(memberId int64) (*models.MentorDbModel, error) {
+	var entity models.MentorDbModel
+	err := database.DB.Model(&models.MentorDbModel{}).
+		Where("\"memberId\" = ?", memberId).
+		Preload("Member").
+		Preload("ProfTags").
+		Preload("Contacts").
+		Preload("Services").
+		First(&entity).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &entity, nil
 }

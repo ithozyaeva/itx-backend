@@ -65,7 +65,6 @@ func SetupAdminRoutes(app *fiber.App, db *gorm.DB) {
 	mentors.Post("/", mentorHandler.Create)
 	mentors.Put("/:id", mentorHandler.Update)
 	mentors.Delete("/:id", mentorHandler.Delete)
-	mentors.Post("/findByTag", mentorHandler.FindByTag)
 	mentors.Post("/review", mentorHandler.AddReviewToService)
 	mentors.Get("/:id/services", mentorHandler.GetServices)
 
@@ -102,6 +101,7 @@ func SetupAdminRoutes(app *fiber.App, db *gorm.DB) {
 	// Маршруты для отзывов на услуги
 	reviewOnServiceHandler := handler.NewReviewOnServiceHandler()
 	reviewsOnService := protected.Group("/reviews-on-service")
+	reviewsOnService.Get("/", reviewOnServiceHandler.Search)
 	reviewsOnService.Get("/:id", reviewOnServiceHandler.GetById)
 	reviewsOnService.Post("/", reviewOnServiceHandler.CreateReview)
 	reviewsOnService.Patch("/:id", reviewOnServiceHandler.Update)
@@ -124,4 +124,12 @@ func SetupPlatformRoutes(app *fiber.App, db *gorm.DB) {
 	members := protected.Group("/members")
 	members.Get("/me", memberHandler.Me)
 	members.Patch("/me", memberHandler.UpdateProfile)
+
+	// Маршруты для ментора
+	mentorsHandler := handler.NewMentorHandler()
+	mentorsMe := protected.Group("/mentors/me")
+	mentorsMe.Post("/update-info", mentorsHandler.UpdateInfo)
+	mentorsMe.Post("/update-prof-tags", mentorsHandler.UpdateProfTags)
+	mentorsMe.Post("/update-services", mentorsHandler.UpdateServices)
+	mentorsMe.Post("/update-contacts", mentorsHandler.UpdateContacts)
 }

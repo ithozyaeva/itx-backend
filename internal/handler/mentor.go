@@ -38,28 +38,6 @@ func (h *MentorHandler) GetById(c *fiber.Ctx) error {
 	return c.JSON(entity)
 }
 
-// FindByTagRequest структура запроса для поиска менторов по тегу
-type FindByTagRequest struct {
-	TagId  int64 `json:"tagId"`
-	Limit  int   `json:"limit"`
-	Offset int   `json:"offset"`
-}
-
-// FindByTag находит менторов по тегу
-func (h *MentorHandler) FindByTag(c *fiber.Ctx) error {
-	req := new(FindByTagRequest)
-	if err := c.BodyParser(req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный запрос"})
-	}
-
-	result, err := h.svc.FindByTag(req.TagId, req.Limit, req.Offset)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
-	}
-
-	return c.JSON(result)
-}
-
 // AddReviewToService добавляет отзыв к услуге ментора
 func (h *MentorHandler) AddReviewToService(c *fiber.Ctx) error {
 	review := new(models.ReviewOnService)
@@ -77,7 +55,7 @@ func (h *MentorHandler) AddReviewToService(c *fiber.Ctx) error {
 
 // Create создает нового ментора со всеми связанными сущностями
 func (h *MentorHandler) Create(c *fiber.Ctx) error {
-	request := new(models.MentorCreateUpdateRequest)
+	request := new(models.MentorDbModel)
 	if err := c.BodyParser(request); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный запрос"})
 	}
@@ -92,7 +70,7 @@ func (h *MentorHandler) Create(c *fiber.Ctx) error {
 
 // Update обновляет ментора со всеми связанными сущностями
 func (h *MentorHandler) Update(c *fiber.Ctx) error {
-	request := new(models.MentorCreateUpdateRequest)
+	request := new(models.MentorDbModel)
 	if err := c.BodyParser(request); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный запрос"})
 	}
@@ -125,7 +103,6 @@ func (h *MentorHandler) GetServices(c *fiber.Ctx) error {
 	return c.JSON(result)
 }
 
-// GetAllWithRelations получает всех менторов с полной информацией
 func (h *MentorHandler) GetAllWithRelations(c *fiber.Ctx) error {
 	req := new(models.SearchRequest)
 	if err := c.QueryParser(req); err != nil {
@@ -133,6 +110,112 @@ func (h *MentorHandler) GetAllWithRelations(c *fiber.Ctx) error {
 	}
 
 	result, err := h.svc.GetAllWithRelations(req.Limit, req.Offset)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(result)
+}
+
+type UpdateInfoRequest struct {
+	Occupation string `json:"occupation"`
+	Experience string `json:"experience"`
+}
+
+func (h *MentorHandler) UpdateInfo(c *fiber.Ctx) error {
+	req := new(UpdateInfoRequest)
+	if err := c.BodyParser(req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный запрос"})
+	}
+
+	existedMentor, err := h.svc.GetByMemberID(c.Locals("member").(*models.Member).Id)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	existedMentor.Occupation = req.Occupation
+	existedMentor.Experience = req.Experience
+
+	result, err := h.svc.UpdateWithRelations(existedMentor)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(result)
+}
+
+type UpdateProfTagsRequest struct {
+	ProfTags []models.ProfTag `json:"profTags"`
+}
+
+func (h *MentorHandler) UpdateProfTags(c *fiber.Ctx) error {
+	req := new(UpdateProfTagsRequest)
+	if err := c.BodyParser(req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный запрос"})
+	}
+
+	existedMentor, err := h.svc.GetByMemberID(c.Locals("member").(*models.Member).Id)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	existedMentor.ProfTags = req.ProfTags
+
+	result, err := h.svc.UpdateWithRelations(existedMentor)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(result)
+}
+
+type UpdateContactsRequest struct {
+	Contacts []models.Contact `json:"contacts"`
+}
+
+func (h *MentorHandler) UpdateContacts(c *fiber.Ctx) error {
+	req := new(UpdateContactsRequest)
+	if err := c.BodyParser(req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный запрос"})
+	}
+
+	existedMentor, err := h.svc.GetByMemberID(c.Locals("member").(*models.Member).Id)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	existedMentor.Contacts = req.Contacts
+
+	result, err := h.svc.UpdateWithRelations(existedMentor)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(result)
+}
+
+type UpdateServicesRequest struct {
+	Services []models.Service `json:"services"`
+}
+
+func (h *MentorHandler) UpdateServices(c *fiber.Ctx) error {
+	req := new(UpdateServicesRequest)
+	if err := c.BodyParser(req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный запрос"})
+	}
+
+	existedMentor, err := h.svc.GetByMemberID(c.Locals("member").(*models.Member).Id)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	existedMentor.Services = req.Services
+
+	result, err := h.svc.UpdateWithRelations(existedMentor)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}

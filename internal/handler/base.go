@@ -79,7 +79,11 @@ func (h *BaseHandler[T]) Delete(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный ID"})
 	}
 
-	entity := new(T)
+	entity, err := h.service.GetById(int64(id))
+
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "Сущность не найдена"})
+	}
 
 	// Пробуем использовать интерфейс Identifiable
 	if identifiable, ok := any(entity).(Identifiable); ok {

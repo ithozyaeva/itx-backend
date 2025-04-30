@@ -58,18 +58,6 @@ type AddReviewOnCommunityRequest struct {
 	Text string `json:"text" binding:"required"`
 }
 
-// MemberModel представляет модель участника с дополнительной информацией
-type MemberModel struct {
-	Id         int64           `json:"id"`
-	TelegramID int64           `json:"telegramID"`
-	Username   string          `json:"tg"`
-	FirstName  string          `json:"firstName"`
-	LastName   string          `json:"lastName"`
-	IsMentor   bool            `json:"isMentor"`
-	Birthday   *utils.DateOnly `json:"birthday"`
-	Role       MemberRole      `json:"role"`
-}
-
 func (ReviewOnCommunity) TableName() string {
 	return "reviewOnCommunity"
 }

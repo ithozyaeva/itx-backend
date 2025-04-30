@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"ithozyeva/database"
 	"ithozyeva/internal/models"
-	"ithozyeva/internal/utils"
-	"time"
 )
 
 // Изменяем с type alias на новый тип
@@ -39,73 +37,6 @@ func (r *MemberRepository) GetByTelegramID(telegramID int64) (*models.Member, er
 		return nil, err
 	}
 	return entity, nil
-}
-
-// Search выполняет поиск участников с пагинацией и проверкой на статус ментора
-func (r *MemberRepository) Search(limit *int, offset *int) ([]models.MemberModel, int, error) {
-	var count int64
-
-	// Сначала считаем общее количество всех записей
-	if err := database.DB.Model(&models.Member{}).Count(&count).Error; err != nil {
-		return nil, 0, err
-	}
-
-	// Создаем SQL-запрос с LEFT JOIN для получения всех участников и информации о том, являются ли они менторами
-	query := `
-		SELECT 
-			m.id,
-			m.username,
-			m.first_name,
-			m.last_name,
-			m.telegram_id,
-			m.birthday,
-			m.role,
-			CASE WHEN mt.id IS NOT NULL THEN true ELSE false END as is_mentor
-		FROM members m
-		LEFT JOIN mentors mt ON m.id = mt."memberId"
-		ORDER BY m.id
-	`
-
-	// Добавляем LIMIT и OFFSET, если они переданы
-	if limit != nil {
-		query += fmt.Sprintf(" LIMIT %d", *limit)
-	}
-	if offset != nil {
-		query += fmt.Sprintf(" OFFSET %d", *offset)
-	}
-
-	// Выполняем запрос
-	rows, err := database.DB.Raw(query).Rows()
-	if err != nil {
-		return nil, 0, err
-	}
-	defer rows.Close()
-
-	// Обрабатываем результаты
-	var result []models.MemberModel
-	for rows.Next() {
-		var id, tgId int64
-		var username, firstName, lastName string
-		var role models.MemberRole
-		var birthday *time.Time
-		var isMentor bool
-		if err := rows.Scan(&id, &username, &firstName, &lastName, &tgId, &birthday, &role, &isMentor); err != nil {
-			return nil, 0, err
-		}
-
-		result = append(result, models.MemberModel{
-			Id:         id,
-			Username:   username,
-			TelegramID: tgId,
-			FirstName:  firstName,
-			LastName:   lastName,
-			IsMentor:   isMentor,
-			Birthday:   utils.NewDateOnly(birthday),
-			Role:       role,
-		})
-	}
-
-	return result, int(count), nil
 }
 
 // GetById получает участника по ID с проверкой на статус ментора
