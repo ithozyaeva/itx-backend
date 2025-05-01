@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/base64"
+	"ithozyeva/internal/bot"
 	"ithozyeva/internal/models"
 	"ithozyeva/internal/service"
 	"strconv"
@@ -12,6 +13,7 @@ import (
 type TelegramAuthHandler struct {
 	telegramService *service.TelegramService
 	authService     *service.AuthTokenService
+	memberService   *service.MemberService
 }
 
 func NewTelegramAuthHandler() *TelegramAuthHandler {
@@ -24,6 +26,7 @@ func NewTelegramAuthHandler() *TelegramAuthHandler {
 	return &TelegramAuthHandler{
 		telegramService: tgService,
 		authService:     service.NewAuthTokenService(),
+		memberService:   service.NewMemberService(),
 	}
 }
 
@@ -46,6 +49,23 @@ func (h *TelegramAuthHandler) Authenticate(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"error": "Invalid token",
 		})
+	}
+
+	isSubcriber, err := bot.CheckUserInChat(existingUser.TelegramID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	if isSubcriber && existingUser.Role == models.MemberRoleUnsubscriber {
+		existingUser.Role = models.MemberRoleSubscriber
+		existingUser, _ = h.memberService.Update(existingUser)
+	}
+
+	if !isSubcriber && existingUser.Role != models.MemberRoleUnsubscriber {
+		existingUser.Role = models.MemberRoleUnsubscriber
+		existingUser, _ = h.memberService.Update(existingUser)
 	}
 
 	// Добавляем заголовок
@@ -121,11 +141,12 @@ func (h *TelegramAuthHandler) RefreshToken(c *fiber.Ctx) error {
 }
 
 type HandleBotMessageReq struct {
-	Token     string `json:"token"`
-	UserID    int64  `json:"user_id"`
-	Username  string `json:"username"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
+	Token     string            `json:"token"`
+	UserID    int64             `json:"user_id"`
+	Username  string            `json:"username"`
+	FirstName string            `json:"first_name"`
+	LastName  string            `json:"last_name"`
+	Role      models.MemberRole `json:"role"`
 }
 
 func (h *TelegramAuthHandler) HandleBotMessage(c *fiber.Ctx) error {
@@ -145,7 +166,7 @@ func (h *TelegramAuthHandler) HandleBotMessage(c *fiber.Ctx) error {
 			Username:   req.Username,
 			FirstName:  req.FirstName,
 			LastName:   req.LastName,
-			Role:       models.MemberRoleUnsubscriber,
+			Role:       req.Role,
 		}
 
 		createdUser, err := h.authService.CreateNewMember(newUser, req.Token)
