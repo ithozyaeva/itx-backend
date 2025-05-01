@@ -1,5 +1,7 @@
 package models
 
+import "ithozyeva/internal/utils"
+
 type MentorDbShortModel struct {
 	Id         int64  `json:"id" gorm:"primaryKey"`
 	MemberId   int64  `json:"memberId" gorm:"column:memberId"`
@@ -15,60 +17,30 @@ type MentorDbModel struct {
 	Experience string    `json:"experience"`
 	Order      int       `json:"order"`
 	Member     Member    `json:"member" gorm:"foreignKey:memberId;references:id"`
-	ProfTags   []ProfTag `json:"profTags" gorm:"many2many:mentorsTags;foreignKey:id;joinForeignKey:mentorId;References:id;joinReferences:tagId"`
+	ProfTags   []ProfTag `json:"profTags" gorm:"many2many:mentors_tags;foreignKey:id;joinForeignKey:mentor_id;References:id;joinReferences:tagId"`
 	Contacts   []Contact `json:"contacts" gorm:"foreignKey:ownerId;references:id"`
 	Services   []Service `json:"services" gorm:"foreignKey:ownerId;references:id"`
 }
 
 type MentorModel struct {
-	Id         int64     `json:"id"`
-	Username   string    `json:"tg"`
-	FirstName  string    `json:"firstName"`
-	LastName   string    `json:"lastName"`
-	Occupation string    `json:"occupation"`
-	Experience string    `json:"experience"`
-	Order      int       `json:"order"`
-	MemberId   int       `json:"memberId"`
-	ProfTags   []ProfTag `json:"profTags"`
-	Contacts   []Contact `json:"contacts"`
-	Services   []Service `json:"services"`
+	Id         int64           `json:"id"`
+	Username   string          `json:"tg"`
+	FirstName  string          `json:"firstName"`
+	LastName   string          `json:"lastName"`
+	Occupation string          `json:"occupation"`
+	Experience string          `json:"experience"`
+	Birthday   *utils.DateOnly `json:"birthday"`
+	Role       MemberRole      `json:"role"`
+	Order      int             `json:"order"`
+	MemberId   int             `json:"memberId"`
+	ProfTags   []ProfTag       `json:"profTags"`
+	Contacts   []Contact       `json:"contacts"`
+	Services   []Service       `json:"services"`
 }
 
-type MentorTagDbModel struct {
-	MentorId int64 `gorm:"primaryKey;column:mentorId"`
-	TagId    int64 `gorm:"primaryKey;column:tagId"`
-}
-
-// MentorCreateUpdateRequest представляет запрос на создание/обновление ментора
-type MentorCreateUpdateRequest struct {
-	Id         int64            `json:"id,omitempty"`
-	MemberId   int64            `json:"memberId" binding:"required"`
-	Occupation string           `json:"occupation"`
-	Experience string           `json:"experience"` // Опечатка в названии поля
-	Order      int              `json:"order"`
-	ProfTags   []ProfTagRequest `json:"profTags,omitempty"`
-	Contacts   []ContactRequest `json:"contacts,omitempty"`
-	Services   []ServiceRequest `json:"services,omitempty"`
-}
-
-// ProfTagRequest представляет запрос на создание/обновление профессионального тега
-type ProfTagRequest struct {
-	Id    int64  `json:"id,omitempty"`
-	Title string `json:"title" binding:"required"`
-}
-
-// ContactRequest представляет запрос на создание/обновление контакта
-type ContactRequest struct {
-	Id   int64  `json:"id,omitempty"`
-	Type int16  `json:"type" binding:"required"`
-	Link string `json:"link" binding:"required"`
-}
-
-// ServiceRequest представляет запрос на создание/обновление услуги
-type ServiceRequest struct {
-	Id    int64  `json:"id,omitempty"`
-	Name  string `json:"name" binding:"required"`
-	Price int    `json:"price"`
+type MentorsTag struct {
+	MentorId int64 `gorm:"primaryKey;column:mentor_id"`
+	TagId    int64 `gorm:"primaryKey;column:tag_id"`
 }
 
 func (MentorDbModel) TableName() string {
@@ -79,8 +51,8 @@ func (MentorDbShortModel) TableName() string {
 	return "mentors"
 }
 
-func (MentorTagDbModel) TableName() string {
-	return "mentorsTags"
+func (MentorsTag) TableName() string {
+	return "mentors_tags"
 }
 
 func (m *MentorDbShortModel) SetID(id int64) {
@@ -89,4 +61,22 @@ func (m *MentorDbShortModel) SetID(id int64) {
 
 func (m *MentorDbModel) SetID(id int64) {
 	m.Id = id
+}
+
+func (m *MentorDbModel) ToModel() MentorModel {
+	return MentorModel{
+		Id:         m.Id,
+		Username:   m.Member.Username,
+		FirstName:  m.Member.FirstName,
+		LastName:   m.Member.LastName,
+		Birthday:   m.Member.Birthday,
+		Role:       MemberRoleMentor,
+		Occupation: m.Occupation,
+		Experience: m.Experience,
+		Order:      m.Order,
+		MemberId:   int(m.MemberId),
+		ProfTags:   m.ProfTags,
+		Contacts:   m.Contacts,
+		Services:   m.Services,
+	}
 }

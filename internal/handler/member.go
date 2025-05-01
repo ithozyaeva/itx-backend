@@ -111,6 +111,35 @@ func (h *MembersHandler) Update(c *fiber.Ctx) error {
 	return c.JSON(result)
 }
 
+func (h *MembersHandler) Delete(c *fiber.Ctx) error {
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный ID"})
+	}
+
+	entity := new(models.Member)
+
+	entity.Id = int64(id)
+
+	if err := h.svc.Delete(entity); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.SendStatus(fiber.StatusNoContent)
+}
+
+func (h *MembersHandler) Me(c *fiber.Ctx) error {
+	member := c.Locals("member").(*models.Member)
+
+	mentor, err := h.svc.GetMentor(member.Id)
+
+	if err != nil {
+		return c.JSON(member)
+	}
+
+	return c.JSON(mentor)
+}
+
 func (h *MembersHandler) UpdateProfile(c *fiber.Ctx) error {
 	request := new(UpdateRequest)
 	err := c.BodyParser(request)
@@ -135,27 +164,11 @@ func (h *MembersHandler) UpdateProfile(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	return c.JSON(result)
-}
+	mentor, err := h.svc.GetMentor(member.Id)
 
-func (h *MembersHandler) Delete(c *fiber.Ctx) error {
-	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный ID"})
+		return c.JSON(result)
 	}
 
-	entity := new(models.Member)
-
-	entity.Id = int64(id)
-
-	if err := h.svc.Delete(entity); err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
-	}
-
-	return c.SendStatus(fiber.StatusNoContent)
-}
-
-func (h *MembersHandler) Me(c *fiber.Ctx) error {
-	member := c.Locals("member").(*models.Member)
-	return c.JSON(member)
+	return c.JSON(mentor)
 }
