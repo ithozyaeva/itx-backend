@@ -13,13 +13,13 @@ type DatabaseConfig struct {
 }
 
 type Config struct {
-	Database      DatabaseConfig
-	JwtSecret     []byte
-	Port          string
-	TelegramToken string
+	Database           DatabaseConfig
+	JwtSecret          []byte
+	Port               string
+	TelegramToken      string
 	TelegramMainChatID int64
-	PublicDomain  string
-	BackendDomain string
+	PublicDomain       string
+	BackendDomain      string
 }
 
 var CFG *Config
@@ -37,11 +37,11 @@ func LoadConfig() {
 			Password: viper.GetString("DB_PASSWORD"),
 			Name:     viper.GetString("DB_NAME"),
 		},
-		JwtSecret:     []byte("jwt_secret"),
-		Port:          viper.GetString("PORT"),
-		TelegramToken: viper.GetString("TELEGRAM_BOT_TOKEN"),
+		JwtSecret:          []byte("jwt_secret"),
+		Port:               viper.GetString("PORT"),
+		TelegramToken:      viper.GetString("TELEGRAM_BOT_TOKEN"),
 		TelegramMainChatID: viper.GetInt64("TELEGRAM_MAIN_CHAT_ID"),
-		PublicDomain:  viper.GetString("PUBLIC_DOMAIN"),
-		BackendDomain: viper.GetString("BACKEND_DOMAIN"),
+		PublicDomain:       viper.GetString("PUBLIC_DOMAIN"),
+		BackendDomain:      viper.GetString("BACKEND_DOMAIN"),
 	}
 }

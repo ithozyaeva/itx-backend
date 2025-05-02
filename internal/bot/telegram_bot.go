@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"ithozyeva/config"
+	"ithozyeva/internal/models"
 	"ithozyeva/internal/service"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -171,20 +172,34 @@ func (b *TelegramBot) sendMessage(chatID int64, text string) {
 }
 
 type AuthRequest struct {
-	Token     string `json:"token"`
-	UserID    int64  `json:"user_id"`
-	Username  string `json:"username"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
+	Token     string            `json:"token"`
+	UserID    int64             `json:"user_id"`
+	Username  string            `json:"username"`
+	FirstName string            `json:"first_name"`
+	LastName  string            `json:"last_name"`
+	Role      models.MemberRole `json:"role"`
 }
 
 func sendAuthToBackend(token string, user *tgbotapi.User) {
+	isSubcriber, err := CheckUserInChat(user.ID)
+	if err != nil {
+		log.Println("Ошибка проверки пользователя в чате:", err)
+	}
+	var role models.MemberRole
+
+	if isSubcriber {
+		role = models.MemberRoleSubscriber
+	} else {
+		role = models.MemberRoleUnsubscriber
+	}
+
 	data := AuthRequest{
 		Token:     token,
 		UserID:    user.ID,
 		Username:  user.UserName,
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
+		Role:      role,
 	}
 
 	jsonData, err := json.Marshal(data)
@@ -203,4 +218,37 @@ func sendAuthToBackend(token string, user *tgbotapi.User) {
 	defer resp.Body.Close()
 
 	log.Println("Ответ от Fiber:", resp.Status)
+}
+
+func CheckUserInChat(userID int64) (bool, error) {
+	telegramApiUrl := fmt.Sprintf("https://api.telegram.org/bot%s/getChatMember?chat_id=%d&user_id=%d", config.CFG.TelegramToken, config.CFG.TelegramMainChatID, userID)
+
+	resp, err := http.Get(telegramApiUrl)
+	if err != nil {
+		return false, err
+	}
+
+	defer resp.Body.Close()
+
+	var result struct {
+		Ok     bool `json:"ok"`
+		Result struct {
+			Status string `json:"status"`
+		} `json:"result"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return false, err
+	}
+
+	if !result.Ok {
+		return false, fmt.Errorf("telegram API error")
+	}
+
+	switch result.Result.Status {
+	case "member", "administrator", "creator":
+		return true, nil
+	default:
+		return false, nil
+	}
 }
