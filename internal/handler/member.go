@@ -2,6 +2,7 @@ package handler
 
 import (
 	"ithozyeva/internal/models"
+	"ithozyeva/internal/repository"
 	"ithozyeva/internal/service"
 	"ithozyeva/internal/utils"
 	"strconv"
@@ -22,14 +23,27 @@ func NewMembersHandler() *MembersHandler {
 	}
 }
 
+type SearchMembersRequest struct {
+	Limit    *int    `query:"limit"`
+	Offset   *int    `query:"offset"`
+	Username *string `query:"username"`
+}
+
 // Search выполняет поиск участников с пагинацией
 func (h *MembersHandler) Search(c *fiber.Ctx) error {
-	req := new(models.SearchRequest)
+	req := new(SearchMembersRequest)
 	if err := c.QueryParser(req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный запрос"})
 	}
 
-	result, err := h.svc.Search(req.Limit, req.Offset)
+	filter := new(repository.SearchFilter)
+	if req.Username != nil {
+		filter = &repository.SearchFilter{"username ILIKE ?": "%" + *req.Username + "%"}
+	} else {
+		filter = nil
+	}
+
+	result, err := h.svc.Search(req.Limit, req.Offset, filter, nil)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}

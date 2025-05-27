@@ -28,7 +28,7 @@ func (h *ReviewOnServiceHandler) Search(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный запрос"})
 	}
 
-	result, err := h.svc.Search(req.Limit, req.Offset)
+	result, err := h.svc.Search(req.Limit, req.Offset, nil, nil)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
