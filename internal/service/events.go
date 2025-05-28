@@ -5,9 +5,23 @@ import (
 	"ithozyeva/internal/repository"
 )
 
-type EventsService = BaseService[models.Event]
+type EventsService struct {
+	BaseService[models.Event]
+	repo repository.EventRepository
+}
 
-func NewEventsService() EventsService {
+func NewEventsService() *EventsService {
 	repo := repository.NewEventRepository()
-	return NewBaseService(repo)
+	return &EventsService{
+		BaseService: NewBaseService(repo),
+		repo:        *repo,
+	}
+}
+
+func (s *EventsService) AddMember(eventId int, memberId int) (*models.Event, error) {
+	return s.repo.AddMember(eventId, memberId)
+}
+
+func (s *EventsService) RemoveMember(eventId int, memberId int) (*models.Event, error) {
+	return s.repo.RemoveMember(eventId, memberId)
 }

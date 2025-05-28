@@ -1,9 +1,5 @@
 package models
 
-import (
-	"ithozyeva/internal/utils"
-)
-
 const (
 	MemberRoleUnsubscriber MemberRole = "UNSUBSCRIBER"
 	MemberRoleSubscriber   MemberRole = "SUBSCRIBER"
@@ -21,13 +17,13 @@ const (
 type ReviewOnCommunityStatus string
 
 type Member struct {
-	Id         int64           `json:"id" gorm:"primaryKey"`
-	Username   string          `json:"tg" gorm:"column:username"`
-	TelegramID int64           `json:"telegramID" gorm:"column:telegram_id"`
-	FirstName  string          `json:"firstName" gorm:"column:first_name"`
-	LastName   string          `json:"lastName" gorm:"column:last_name"`
-	Role       MemberRole      `json:"role" gorm:"column:role"`
-	Birthday   *utils.DateOnly `json:"birthday" gorm:"column:birthday"`
+	Id         int64      `json:"id" gorm:"primaryKey"`
+	Username   string     `json:"tg" gorm:"column:username"`
+	TelegramID int64      `json:"telegramID" gorm:"column:telegram_id"`
+	FirstName  string     `json:"firstName" gorm:"column:first_name"`
+	LastName   string     `json:"lastName" gorm:"column:last_name"`
+	Role       MemberRole `json:"role" gorm:"column:role"`
+	Birthday   *DateOnly  `json:"birthday" gorm:"column:birthday"`
 }
 
 type ReviewOnCommunity struct {

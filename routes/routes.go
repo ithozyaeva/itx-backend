@@ -53,6 +53,7 @@ func SetupPublicRoutes(app *fiber.App, db *gorm.DB) {
 	eventsHandler := handler.NewEventsHandler()
 	api.Get("/events/old", eventsHandler.GetOld)
 	api.Get("/events/next", eventsHandler.GetNext)
+	api.Get("/events/ics", eventsHandler.GetICSFile)
 }
 
 func SetupAdminRoutes(app *fiber.App, db *gorm.DB) {
@@ -150,4 +151,6 @@ func SetupPlatformRoutes(app *fiber.App, db *gorm.DB) {
 	eventHandler := handler.NewEventsHandler()
 	events := protected.Group("/events")
 	events.Get("/", eventHandler.Search)
+	events.Post("/apply", eventHandler.AddMember)
+	events.Post("/decline", eventHandler.RemoveMember)
 }

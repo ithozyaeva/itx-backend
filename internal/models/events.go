@@ -22,4 +22,5 @@ type Event struct {
 	Open            bool      `json:"open"`
 	VideoLink       string    `json:"videoLink" gorm:"column:video_link"`
 	Hosts           []Member  `json:"hosts" gorm:"many2many:event_hosts;foreignKey:id;joinForeignKey:event_id;References:id;joinReferences:member_id;replace:true"`
+	Members         []Member  `json:"members" gorm:"many2many:event_members;foreignKey:id;joinForeignKey:event_id;References:id;joinReferences:member_id;replace:true"`
 }
