@@ -34,7 +34,7 @@ func (h *BaseHandler[T]) Search(c *fiber.Ctx) error {
 	}
 
 	// Передаем указатели в сервис
-	result, err := h.service.Search(req.Limit, req.Offset)
+	result, err := h.service.Search(req.Limit, req.Offset, nil, nil)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}

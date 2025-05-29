@@ -15,8 +15,7 @@ func NewReviewOnServiceRepository() *ReviewOnServiceRepository {
 	}
 }
 
-// Search выполняет поиск отзывов на услуги с пагинацией и включает информацию о услуге и менторе
-func (r *ReviewOnServiceRepository) Search(limit *int, offset *int) ([]models.ReviewOnService, int64, error) {
+func (r *ReviewOnServiceRepository) Search(limit *int, offset *int, filter *SearchFilter, order *Order) ([]models.ReviewOnService, int64, error) {
 	var reviews []models.ReviewOnService
 	var count int64
 

@@ -6,7 +6,7 @@ import (
 )
 
 type BaseService[T any] interface {
-	Search(limit *int, offset *int) (*models.RegistrySearch[T], error)
+	Search(limit *int, offset *int, filter *repository.SearchFilter, order *repository.Order) (*models.RegistrySearch[T], error)
 	GetById(id int64) (*T, error)
 	Create(entity *T) (*T, error)
 	Update(entity *T) (*T, error)
@@ -21,8 +21,8 @@ func NewBaseService[T any](repo repository.BaseRepository[T]) BaseService[T] {
 	return &baseService[T]{repo: repo}
 }
 
-func (s *baseService[T]) Search(limit *int, offset *int) (*models.RegistrySearch[T], error) {
-	items, count, err := s.repo.Search(limit, offset)
+func (s *baseService[T]) Search(limit *int, offset *int, filter *repository.SearchFilter, order *repository.Order) (*models.RegistrySearch[T], error) {
+	items, count, err := s.repo.Search(limit, offset, filter, order)
 	if err != nil {
 		return nil, err
 	}

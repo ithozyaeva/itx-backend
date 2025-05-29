@@ -49,6 +49,11 @@ func SetupPublicRoutes(app *fiber.App, db *gorm.DB) {
 	// Маршруты для отзывов о сообществе
 	reviewHandler := handler.NewReviewOnCommunityHandler()
 	api.Get("/review-on-community", reviewHandler.GetApproved)
+
+	eventsHandler := handler.NewEventsHandler()
+	api.Get("/events/old", eventsHandler.GetOld)
+	api.Get("/events/next", eventsHandler.GetNext)
+	api.Get("/events/ics", eventsHandler.GetICSFile)
 }
 
 func SetupAdminRoutes(app *fiber.App, db *gorm.DB) {
@@ -106,6 +111,15 @@ func SetupAdminRoutes(app *fiber.App, db *gorm.DB) {
 	reviewsOnService.Post("/", reviewOnServiceHandler.CreateReview)
 	reviewsOnService.Patch("/:id", reviewOnServiceHandler.Update)
 	reviewsOnService.Delete("/:id", reviewOnServiceHandler.Delete)
+
+	// Маршруты для ивентов
+	eventHandler := handler.NewEventsHandler()
+	events := protected.Group("/events")
+	events.Get("/", eventHandler.Search)
+	events.Get("/:id", eventHandler.GetById)
+	events.Post("/", eventHandler.Create)
+	events.Put("/:id", eventHandler.Update)
+	events.Delete("/:id", eventHandler.Delete)
 }
 
 func SetupPlatformRoutes(app *fiber.App, db *gorm.DB) {
@@ -132,4 +146,11 @@ func SetupPlatformRoutes(app *fiber.App, db *gorm.DB) {
 	mentorsMe.Post("/update-prof-tags", mentorsHandler.UpdateProfTags)
 	mentorsMe.Post("/update-services", mentorsHandler.UpdateServices)
 	mentorsMe.Post("/update-contacts", mentorsHandler.UpdateContacts)
+
+	// Маршруты для ивентов
+	eventHandler := handler.NewEventsHandler()
+	events := protected.Group("/events")
+	events.Get("/", eventHandler.Search)
+	events.Post("/apply", eventHandler.AddMember)
+	events.Post("/decline", eventHandler.RemoveMember)
 }

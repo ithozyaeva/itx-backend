@@ -1,7 +1,5 @@
 package models
 
-import "ithozyeva/internal/utils"
-
 type MentorDbShortModel struct {
 	Id         int64  `json:"id" gorm:"primaryKey"`
 	MemberId   int64  `json:"memberId" gorm:"column:memberId"`
@@ -23,19 +21,19 @@ type MentorDbModel struct {
 }
 
 type MentorModel struct {
-	Id         int64           `json:"id"`
-	Username   string          `json:"tg"`
-	FirstName  string          `json:"firstName"`
-	LastName   string          `json:"lastName"`
-	Occupation string          `json:"occupation"`
-	Experience string          `json:"experience"`
-	Birthday   *utils.DateOnly `json:"birthday"`
-	Role       MemberRole      `json:"role"`
-	Order      int             `json:"order"`
-	MemberId   int             `json:"memberId"`
-	ProfTags   []ProfTag       `json:"profTags"`
-	Contacts   []Contact       `json:"contacts"`
-	Services   []Service       `json:"services"`
+	Id         int64      `json:"id"`
+	Username   string     `json:"tg"`
+	FirstName  string     `json:"firstName"`
+	LastName   string     `json:"lastName"`
+	Occupation string     `json:"occupation"`
+	Experience string     `json:"experience"`
+	Birthday   *DateOnly  `json:"birthday"`
+	Role       MemberRole `json:"role"`
+	Order      int        `json:"order"`
+	MemberId   int        `json:"memberId"`
+	ProfTags   []ProfTag  `json:"profTags"`
+	Contacts   []Contact  `json:"contacts"`
+	Services   []Service  `json:"services"`
 }
 
 type MentorsTag struct {

@@ -1,11 +1,13 @@
 package repository
 
 import (
+	"fmt"
+
 	"gorm.io/gorm"
 )
 
 type BaseRepository[T any] interface {
-	Search(limit *int, offset *int) ([]T, int64, error)
+	Search(limit *int, offset *int, filter *SearchFilter, order *Order) ([]T, int64, error)
 	GetById(id int64) (*T, error)
 	Create(entity *T) (*T, error)
 	Update(entity *T) (*T, error)
@@ -17,33 +19,46 @@ type baseRepository[T any] struct {
 	model *T
 }
 
+type SearchFilter = map[string]interface{}
+
+type Order struct {
+	ColumnBy string
+	Order    string
+}
+
 func NewBaseRepository[T any](db *gorm.DB, model *T) BaseRepository[T] {
 	return &baseRepository[T]{db: db, model: model}
 }
 
 // Реализация методов
-func (r *baseRepository[T]) Search(limit *int, offset *int) ([]T, int64, error) {
+func (r *baseRepository[T]) Search(limit *int, offset *int, filter *SearchFilter, order *Order) ([]T, int64, error) {
 	var entities []T
 	var count int64
 
 	query := r.db.Model(r.model)
 
-	// Сначала считаем общее количество всех записей
+	if filter != nil {
+		for key, value := range *filter {
+			query = query.Where(key, value)
+		}
+	}
+
+	if order != nil {
+		query = query.Order(fmt.Sprintf("\"%s\" %s", order.ColumnBy, order.Order))
+	}
+
 	if err := query.Count(&count).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Применяем limit только если он передан
 	if limit != nil {
 		query = query.Limit(*limit)
 	}
 
-	// Применяем offset только если он передан
 	if offset != nil {
 		query = query.Offset(*offset)
 	}
 
-	// Выполняем запрос
 	if err := query.Find(&entities).Error; err != nil {
 		return nil, 0, err
 	}

@@ -18,8 +18,8 @@ func NewReviewOnServiceService() *ReviewOnServiceService {
 	}
 }
 
-func (s *ReviewOnServiceService) Search(limit *int, offset *int) (*models.RegistrySearch[models.ReviewOnService], error) {
-	items, total, err := s.repository.Search(limit, offset)
+func (s *ReviewOnServiceService) Search(limit *int, offset *int, filter *repository.SearchFilter, order *repository.Order) (*models.RegistrySearch[models.ReviewOnService], error) {
+	items, total, err := s.repository.Search(limit, offset, filter, order)
 	if err != nil {
 		return nil, err
 	}
