@@ -153,4 +153,12 @@ func SetupPlatformRoutes(app *fiber.App, db *gorm.DB) {
 	events.Get("/", eventHandler.Search)
 	events.Post("/apply", eventHandler.AddMember)
 	events.Post("/decline", eventHandler.RemoveMember)
+
+	// Маршурты для таблицы рефералов
+	referalsHandler := handler.NewReferalLinkHandler()
+	referals := protected.Group("/referals")
+	referals.Get("/", referalsHandler.Search)
+	referals.Post("/add-link", referalsHandler.AddLink)
+	referals.Put("/update-link", referalsHandler.UpdateLink)
+	referals.Delete("/delete-link", referalsHandler.DeleteLink)
 }
