@@ -60,7 +60,7 @@ func (r *ReferalLinkRepository) Update(entity *models.ReferalLink) (*models.Refe
 
 	database.DB.Model(&entity).Association("ProfTags").Replace(entity.ProfTags)
 
-	updatedEntity, err := r.BaseRepository.GetById(entity.Id)
+	updatedEntity, err := r.GetById(entity.Id)
 
 	if err != nil {
 		return nil, err
