@@ -71,7 +71,7 @@ func (h *ReferalLinkHandler) UpdateLink(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Нельзя изменять чужие реферальные ссылки"})
 	}
 
-	result, err := h.svc.UpdateLink(req)
+	result, err := h.svc.UpdateLink(req, member)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}

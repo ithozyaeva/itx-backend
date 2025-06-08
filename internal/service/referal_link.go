@@ -34,9 +34,10 @@ func (s *ReferalLinkService) AddLink(req *models.AddLinkRequest, member *models.
 	return s.repo.Create(newEntity)
 }
 
-func (s *ReferalLinkService) UpdateLink(req *models.UpdateLinkRequest) (*models.ReferalLink, error) {
+func (s *ReferalLinkService) UpdateLink(req *models.UpdateLinkRequest, member *models.Member) (*models.ReferalLink, error) {
 	updatedEntity := &models.ReferalLink{
 		Id:             req.Id,
+		Author:         *member,
 		Company:        req.Company,
 		Grade:          req.Grade,
 		ProfTags:       req.ProfTags,
