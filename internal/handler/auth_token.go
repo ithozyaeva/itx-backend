@@ -5,6 +5,7 @@ import (
 	"ithozyeva/internal/bot"
 	"ithozyeva/internal/models"
 	"ithozyeva/internal/service"
+	"ithozyeva/internal/utils"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -58,13 +59,13 @@ func (h *TelegramAuthHandler) Authenticate(c *fiber.Ctx) error {
 		})
 	}
 
-	if isSubcriber && existingUser.Role == models.MemberRoleUnsubscriber {
-		existingUser.Role = models.MemberRoleSubscriber
+	if isSubcriber && utils.HasRole(existingUser.Roles, models.MemberRoleUnsubscriber) {
+		existingUser.Roles = []models.Role{models.MemberRoleSubscriber}
 		existingUser, _ = h.memberService.Update(existingUser)
 	}
 
-	if !isSubcriber && existingUser.Role != models.MemberRoleUnsubscriber {
-		existingUser.Role = models.MemberRoleUnsubscriber
+	if !isSubcriber && utils.HasRole(existingUser.Roles, models.MemberRoleSubscriber) {
+		existingUser.Roles = []models.Role{models.MemberRoleUnsubscriber}
 		existingUser, _ = h.memberService.Update(existingUser)
 	}
 
@@ -141,12 +142,12 @@ func (h *TelegramAuthHandler) RefreshToken(c *fiber.Ctx) error {
 }
 
 type HandleBotMessageReq struct {
-	Token     string            `json:"token"`
-	UserID    int64             `json:"user_id"`
-	Username  string            `json:"username"`
-	FirstName string            `json:"first_name"`
-	LastName  string            `json:"last_name"`
-	Role      models.MemberRole `json:"role"`
+	Token     string      `json:"token"`
+	UserID    int64       `json:"user_id"`
+	Username  string      `json:"username"`
+	FirstName string      `json:"first_name"`
+	LastName  string      `json:"last_name"`
+	Role      models.Role `json:"role"`
 }
 
 func (h *TelegramAuthHandler) HandleBotMessage(c *fiber.Ctx) error {
@@ -166,7 +167,7 @@ func (h *TelegramAuthHandler) HandleBotMessage(c *fiber.Ctx) error {
 			Username:   req.Username,
 			FirstName:  req.FirstName,
 			LastName:   req.LastName,
-			Role:       req.Role,
+			Roles:      []models.Role{req.Role},
 		}
 
 		createdUser, err := h.authService.CreateNewMember(newUser, req.Token)

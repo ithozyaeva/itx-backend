@@ -44,3 +44,11 @@ func (s *MemberService) GetMentor(memberId int64) (*models.MentorModel, error) {
 
 	return &mentor, nil
 }
+
+func (s *MemberService) GetPermissions(memberId int64) ([]models.Permission, error) {
+	return s.repo.GetMemberPermissions(memberId)
+}
+
+func (s *MemberService) GetAllPermissions() ([]models.Permission, error) {
+	return s.repo.GetAllPermissions()
+}

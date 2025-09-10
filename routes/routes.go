@@ -3,6 +3,7 @@ package routes
 import (
 	"ithozyeva/internal/handler"
 	"ithozyeva/internal/middleware"
+	"ithozyeva/internal/models"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -54,22 +55,26 @@ func SetupPublicRoutes(app *fiber.App, db *gorm.DB) {
 	api.Get("/events/old", eventsHandler.GetOld)
 	api.Get("/events/next", eventsHandler.GetNext)
 	api.Get("/events/ics", eventsHandler.GetICSFile)
+
+	// Маршруты для словарей
+	dictionaryHandler := handler.NewDictionaryHandler()
+	api.Get("/dictionaries", dictionaryHandler.GetDictionaries)
 }
 
 func SetupAdminRoutes(app *fiber.App, db *gorm.DB) {
 	authMiddleware := middleware.NewAuthMiddleware(db)
 
 	// Защищенные маршруты
-	protected := app.Group("/api/admin", authMiddleware.RequireJWTAuth)
+	protected := app.Group("/api/admin", authMiddleware.RequireAuth)
 
 	// Маршруты для менторов
 	mentorHandler := handler.NewMentorHandler()
-	mentors := protected.Group("/mentors")
+	mentors := protected.Group("/mentors", authMiddleware.RequirePermission(models.PermissionCanViewAdminMentors))
 	mentors.Get("/", mentorHandler.GetAllWithRelations)
 	mentors.Get("/:id", mentorHandler.GetById)
-	mentors.Post("/", mentorHandler.Create)
-	mentors.Put("/:id", mentorHandler.Update)
-	mentors.Delete("/:id", mentorHandler.Delete)
+	mentors.Post("/", authMiddleware.RequirePermission(models.PermissionCanEditAdminMentors), mentorHandler.Create)
+	mentors.Put("/:id", authMiddleware.RequirePermission(models.PermissionCanEditAdminMentors), mentorHandler.Update)
+	mentors.Delete("/:id", authMiddleware.RequirePermission(models.PermissionCanEditAdminMentors), mentorHandler.Delete)
 	mentors.Post("/review", mentorHandler.AddReviewToService)
 	mentors.Get("/:id/services", mentorHandler.GetServices)
 
@@ -86,40 +91,41 @@ func SetupAdminRoutes(app *fiber.App, db *gorm.DB) {
 
 	// Маршруты для участников
 	memberHandler := handler.NewMembersHandler()
-	members := protected.Group("/members")
+	members := protected.Group("/members", authMiddleware.RequirePermission(models.PermissionCanViewAdminMembers))
 	members.Get("/", memberHandler.Search)
-	members.Post("/", memberHandler.Create)
+	members.Post("/", authMiddleware.RequirePermission(models.PermissionCanEditAdminMembers), memberHandler.Create)
 	members.Get("/:id", memberHandler.GetById)
-	members.Put("/:id", memberHandler.Update)
-	members.Delete("/:id", memberHandler.Delete)
+	members.Put("/:id", authMiddleware.RequirePermission(models.PermissionCanEditAdminMembers), memberHandler.Update)
+	members.Delete("/:id", authMiddleware.RequirePermission(models.PermissionCanEditAdminMembers), memberHandler.Delete)
 
+	protected.Get("/me/permissions", memberHandler.GetPermissions)
 	// Маршруты для отзывов о сообществе
 	reviewHandler := handler.NewReviewOnCommunityHandler()
-	reviews := protected.Group("/reviews")
-	reviews.Post("/:id/approve", reviewHandler.Approve)
+	reviews := protected.Group("/reviews", authMiddleware.RequirePermission(models.PermissionCanViewAdminReviews))
+	reviews.Post("/:id/approve", authMiddleware.RequirePermission(models.PermissionCanApprovedAdminReviews), reviewHandler.Approve)
 	reviews.Get("/", reviewHandler.GetAllWithAuthor)
-	reviews.Post("/", reviewHandler.CreateReview)
+	reviews.Post("/", authMiddleware.RequirePermission(models.PermissionCanEditAdminReviews), reviewHandler.CreateReview)
 	reviews.Get("/:id", reviewHandler.GetById)
-	reviews.Patch("/:id", reviewHandler.Update)
-	reviews.Delete("/:id", reviewHandler.Delete)
+	reviews.Patch("/:id", authMiddleware.RequirePermission(models.PermissionCanEditAdminReviews), reviewHandler.Update)
+	reviews.Delete("/:id", authMiddleware.RequirePermission(models.PermissionCanEditAdminReviews), reviewHandler.Delete)
 
 	// Маршруты для отзывов на услуги
 	reviewOnServiceHandler := handler.NewReviewOnServiceHandler()
-	reviewsOnService := protected.Group("/reviews-on-service")
+	reviewsOnService := protected.Group("/reviews-on-service", authMiddleware.RequirePermission(models.PermissionCanViewAdminMentorsReview))
 	reviewsOnService.Get("/", reviewOnServiceHandler.Search)
 	reviewsOnService.Get("/:id", reviewOnServiceHandler.GetById)
-	reviewsOnService.Post("/", reviewOnServiceHandler.CreateReview)
-	reviewsOnService.Patch("/:id", reviewOnServiceHandler.Update)
-	reviewsOnService.Delete("/:id", reviewOnServiceHandler.Delete)
+	reviewsOnService.Post("/", authMiddleware.RequirePermission(models.PermissionCanEditAdminMentorsReview), reviewOnServiceHandler.CreateReview)
+	reviewsOnService.Patch("/:id", authMiddleware.RequirePermission(models.PermissionCanEditAdminMentorsReview), reviewOnServiceHandler.Update)
+	reviewsOnService.Delete("/:id", authMiddleware.RequirePermission(models.PermissionCanEditAdminMentorsReview), reviewOnServiceHandler.Delete)
 
 	// Маршруты для ивентов
 	eventHandler := handler.NewEventsHandler()
-	events := protected.Group("/events")
+	events := protected.Group("/events", authMiddleware.RequirePermission(models.PermissionCanViewAdminEvents))
 	events.Get("/", eventHandler.Search)
 	events.Get("/:id", eventHandler.GetById)
-	events.Post("/", eventHandler.Create)
-	events.Put("/:id", eventHandler.Update)
-	events.Delete("/:id", eventHandler.Delete)
+	events.Post("/", authMiddleware.RequirePermission(models.PermissionCanEditAdminEvents), eventHandler.Create)
+	events.Put("/:id", authMiddleware.RequirePermission(models.PermissionCanEditAdminEvents), eventHandler.Update)
+	events.Delete("/:id", authMiddleware.RequirePermission(models.PermissionCanEditAdminEvents), eventHandler.Delete)
 }
 
 func SetupPlatformRoutes(app *fiber.App, db *gorm.DB) {
@@ -142,10 +148,10 @@ func SetupPlatformRoutes(app *fiber.App, db *gorm.DB) {
 	// Маршруты для ментора
 	mentorsHandler := handler.NewMentorHandler()
 	mentorsMe := protected.Group("/mentors/me")
-	mentorsMe.Post("/update-info", mentorsHandler.UpdateInfo)
-	mentorsMe.Post("/update-prof-tags", mentorsHandler.UpdateProfTags)
-	mentorsMe.Post("/update-services", mentorsHandler.UpdateServices)
-	mentorsMe.Post("/update-contacts", mentorsHandler.UpdateContacts)
+	mentorsMe.Post("/update-info", authMiddleware.RequirePermission(models.PermissionCanEditAdminMentors), mentorsHandler.UpdateInfo)
+	mentorsMe.Post("/update-prof-tags", authMiddleware.RequirePermission(models.PermissionCanEditAdminMentors), mentorsHandler.UpdateProfTags)
+	mentorsMe.Post("/update-services", authMiddleware.RequirePermission(models.PermissionCanEditAdminMentors), mentorsHandler.UpdateServices)
+	mentorsMe.Post("/update-contacts", authMiddleware.RequirePermission(models.PermissionCanEditAdminMentors), mentorsHandler.UpdateContacts)
 
 	// Маршруты для ивентов
 	eventHandler := handler.NewEventsHandler()

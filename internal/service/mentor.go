@@ -3,6 +3,7 @@ package service
 import (
 	"ithozyeva/internal/models"
 	"ithozyeva/internal/repository"
+	"ithozyeva/internal/utils"
 )
 
 // MentorServiceInterface интерфейс для сервиса менторов
@@ -73,7 +74,7 @@ func (s *MentorService) CreateWithRelations(request *models.MentorDbModel) (*mod
 		return nil, err
 	}
 
-	connectedMember.Role = models.MemberRoleMentor
+	connectedMember.Roles = append(connectedMember.Roles, models.MemberRoleMentor)
 
 	_, err = s.memberRepo.Update(connectedMember)
 
@@ -131,7 +132,7 @@ func (s *MentorService) Delete(mentor *models.MentorDbShortModel) error {
 		return err
 	}
 
-	connectedMember.Role = models.MemberRoleSubscriber
+	connectedMember.Roles = utils.RemoveRole(connectedMember.Roles, models.MemberRoleMentor)
 
 	_, err = s.memberRepo.Update(connectedMember)
 

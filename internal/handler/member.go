@@ -1,13 +1,16 @@
 package handler
 
 import (
+	"ithozyeva/config"
 	"ithozyeva/internal/models"
 	"ithozyeva/internal/repository"
 	"ithozyeva/internal/service"
 	"ithozyeva/internal/utils"
 	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // MembersHandler обработчик для работы с участниками
@@ -24,9 +27,10 @@ func NewMembersHandler() *MembersHandler {
 }
 
 type SearchMembersRequest struct {
-	Limit    *int    `query:"limit"`
-	Offset   *int    `query:"offset"`
-	Username *string `query:"username"`
+	Limit    *int     `query:"limit"`
+	Offset   *int     `query:"offset"`
+	Username *string  `query:"username"`
+	Roles    []string `query:"roles"`
 }
 
 // Search выполняет поиск участников с пагинацией
@@ -36,14 +40,24 @@ func (h *MembersHandler) Search(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный запрос"})
 	}
 
-	filter := new(repository.SearchFilter)
+	filter := make(repository.SearchFilter)
+
 	if req.Username != nil {
-		filter = &repository.SearchFilter{"username ILIKE ?": "%" + *req.Username + "%"}
-	} else {
-		filter = nil
+		filter["username ILIKE ?"] = "%" + *req.Username + "%"
 	}
 
-	result, err := h.svc.Search(req.Limit, req.Offset, filter, nil)
+	if len(req.Roles) > 0 {
+		filter["EXISTS (SELECT 1 FROM member_roles WHERE member_id = members.id AND role IN ?)"] = req.Roles
+	}
+
+	var finalFilter *repository.SearchFilter
+	if len(filter) > 0 {
+		finalFilter = &filter
+	} else {
+		finalFilter = nil
+	}
+
+	result, err := h.svc.Search(req.Limit, req.Offset, finalFilter, nil)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
@@ -84,12 +98,12 @@ func (h *MembersHandler) Create(c *fiber.Ctx) error {
 }
 
 type UpdateRequest struct {
-	Id        int64             `json:"id"`
-	FirstName string            `json:"firstName"`
-	LastName  string            `json:"lastName"`
-	Birthday  *string           `json:"birthday"`
-	Role      models.MemberRole `json:"role"`
-	Username  string            `json:"tg"`
+	Id        int64         `json:"id"`
+	FirstName string        `json:"firstName"`
+	LastName  string        `json:"lastName"`
+	Birthday  *string       `json:"birthday"`
+	Roles     []models.Role `json:"roles"`
+	Username  string        `json:"tg"`
 }
 
 func (h *MembersHandler) Update(c *fiber.Ctx) error {
@@ -106,7 +120,7 @@ func (h *MembersHandler) Update(c *fiber.Ctx) error {
 
 	member.FirstName = request.FirstName
 	member.LastName = request.LastName
-	member.Role = request.Role
+	member.Roles = request.Roles
 	member.Username = request.Username
 
 	parsedDate, err := utils.ParseDate(request.Birthday)
@@ -185,4 +199,47 @@ func (h *MembersHandler) UpdateProfile(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(mentor)
+}
+
+// TODO: удалить возможность авторизировать через JWT через время
+func (h *MembersHandler) GetPermissions(c *fiber.Ctx) error {
+	// First, try to get member from local context (Telegram authentication)
+	member, ok := c.Locals("member").(*models.Member)
+	if ok && member != nil {
+		// User is authenticated via Telegram, get their actual permissions
+		permissions, err := h.svc.GetPermissions(member.Id)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(permissions)
+	}
+
+	// If no member in context, check for JWT authentication
+	authHeader := c.Get("Authorization")
+	if authHeader == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
+	}
+
+	// Validate JWT token
+	tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+	if tokenStr == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Unauthorized"})
+	}
+
+	// Parse and validate JWT token
+	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+		return []byte(config.CFG.JwtSecret), nil
+	})
+
+	if err != nil || !token.Valid {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid token"})
+	}
+
+	// If JWT is valid, user is a superadmin - return all permissions
+	permissions, err := h.svc.GetAllPermissions()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	return c.JSON(permissions)
 }
