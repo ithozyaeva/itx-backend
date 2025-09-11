@@ -172,12 +172,12 @@ func (b *TelegramBot) sendMessage(chatID int64, text string) {
 }
 
 type AuthRequest struct {
-	Token     string            `json:"token"`
-	UserID    int64             `json:"user_id"`
-	Username  string            `json:"username"`
-	FirstName string            `json:"first_name"`
-	LastName  string            `json:"last_name"`
-	Role      models.MemberRole `json:"role"`
+	Token     string      `json:"token"`
+	UserID    int64       `json:"user_id"`
+	Username  string      `json:"username"`
+	FirstName string      `json:"first_name"`
+	LastName  string      `json:"last_name"`
+	Role      models.Role `json:"role"`
 }
 
 func sendAuthToBackend(token string, user *tgbotapi.User) {
@@ -185,7 +185,7 @@ func sendAuthToBackend(token string, user *tgbotapi.User) {
 	if err != nil {
 		log.Println("Ошибка проверки пользователя в чате:", err)
 	}
-	var role models.MemberRole
+	var role models.Role
 
 	if isSubcriber {
 		role = models.MemberRoleSubscriber
