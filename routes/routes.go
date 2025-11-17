@@ -126,6 +126,15 @@ func SetupAdminRoutes(app *fiber.App, db *gorm.DB) {
 	events.Post("/", authMiddleware.RequirePermission(models.PermissionCanEditAdminEvents), eventHandler.Create)
 	events.Put("/:id", authMiddleware.RequirePermission(models.PermissionCanEditAdminEvents), eventHandler.Update)
 	events.Delete("/:id", authMiddleware.RequirePermission(models.PermissionCanEditAdminEvents), eventHandler.Delete)
+
+	// Маршруты для тегов ивентов
+	eventTagHandler := handler.NewEventTagHandler()
+	eventTags := protected.Group("/eventTags")
+	eventTags.Get("/", eventTagHandler.Search)
+	eventTags.Get("/:id", eventTagHandler.GetById)
+	eventTags.Post("/", authMiddleware.RequirePermission(models.PermissionCanEditAdminEvents), eventTagHandler.Create)
+	eventTags.Put("/:id", authMiddleware.RequirePermission(models.PermissionCanEditAdminEvents), eventTagHandler.Update)
+	eventTags.Delete("/:id", authMiddleware.RequirePermission(models.PermissionCanEditAdminEvents), eventTagHandler.Delete)
 }
 
 func SetupPlatformRoutes(app *fiber.App, db *gorm.DB) {
