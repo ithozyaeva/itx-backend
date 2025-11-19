@@ -20,6 +20,15 @@ type Config struct {
 	TelegramMainChatID int64
 	PublicDomain       string
 	BackendDomain      string
+	S3                 S3Config
+}
+
+type S3Config struct {
+	Endpoint  string
+	Region    string
+	AccessKey string
+	SecretKey string
+	Bucket    string
 }
 
 var CFG *Config
@@ -43,5 +52,12 @@ func LoadConfig() {
 		TelegramMainChatID: viper.GetInt64("TELEGRAM_MAIN_CHAT_ID"),
 		PublicDomain:       viper.GetString("PUBLIC_DOMAIN"),
 		BackendDomain:      viper.GetString("BACKEND_DOMAIN"),
+		S3: S3Config{
+			Endpoint:  viper.GetString("S3_ENDPOINT"),
+			Region:    viper.GetString("S3_REGION"),
+			AccessKey: viper.GetString("S3_ACCESS_KEY"),
+			SecretKey: viper.GetString("S3_SECRET_KEY"),
+			Bucket:    viper.GetString("S3_BUCKET"),
+		},
 	}
 }
