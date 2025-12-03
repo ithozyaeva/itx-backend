@@ -8,19 +8,42 @@ import (
 	"math/rand"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"ithozyeva/config"
+	"ithozyeva/database"
 	"ithozyeva/internal/models"
 	"ithozyeva/internal/service"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+var (
+	globalBot *TelegramBot
+	botMutex  sync.RWMutex
+)
+
+// GetGlobalBot возвращает глобальный экземпляр бота
+func GetGlobalBot() *TelegramBot {
+	botMutex.RLock()
+	defer botMutex.RUnlock()
+	return globalBot
+}
+
+// SetGlobalBot устанавливает глобальный экземпляр бота
+func SetGlobalBot(bot *TelegramBot) {
+	botMutex.Lock()
+	defer botMutex.Unlock()
+	globalBot = bot
+}
+
 type TelegramBot struct {
-	bot        *tgbotapi.BotAPI
-	tg_service *service.TelegramService
-	member     *service.MemberService
+	bot                    *tgbotapi.BotAPI
+	tg_service             *service.TelegramService
+	member                 *service.MemberService
+	eventAlertSubscription *service.EventAlertSubscriptionService
+	eventService           *service.EventsService
 }
 
 func NewTelegramBot() (*TelegramBot, error) {
@@ -41,17 +64,24 @@ func NewTelegramBot() (*TelegramBot, error) {
 	}
 
 	member_service := service.NewMemberService()
+	eventAlertSubscriptionService := service.NewEventAlertSubscriptionService()
+	eventService := service.NewEventsService()
 
 	return &TelegramBot{
-		bot:        bot,
-		tg_service: tg_service,
-		member:     member_service,
+		bot:                    bot,
+		tg_service:             tg_service,
+		member:                 member_service,
+		eventAlertSubscription: eventAlertSubscriptionService,
+		eventService:           eventService,
 	}, nil
 }
 
 func (b *TelegramBot) Start() {
 	// Start birthday checker
 	go b.startBirthdayChecker()
+	
+	// Start event alerts scheduler
+	go b.startEventAlertsScheduler()
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -59,6 +89,12 @@ func (b *TelegramBot) Start() {
 	updates := b.bot.GetUpdatesChan(u)
 
 	for update := range updates {
+		// Обработка callback кнопок
+		if update.CallbackQuery != nil {
+			b.handleCallbackQuery(update.CallbackQuery)
+			continue
+		}
+
 		if update.Message == nil {
 			continue
 		}
@@ -168,6 +204,412 @@ func (b *TelegramBot) sendMessage(chatID int64, text string) {
 	msg := tgbotapi.NewMessage(chatID, text)
 	if _, err := b.bot.Send(msg); err != nil {
 		log.Printf("Error sending message: %v", err)
+	}
+}
+
+func (b *TelegramBot) SendEventAlert(telegramID int64, event *models.Event, isInitial bool) error {
+	now := time.Now()
+	timeUntilEvent := event.Date.Sub(now)
+	messageText := b.formatEventAlert(event, isInitial, timeUntilEvent)
+
+	msg := tgbotapi.NewMessage(telegramID, messageText)
+	msg.ParseMode = "HTML"
+
+	if isInitial {
+		keyboard := tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData("✅ Приду", fmt.Sprintf("event_attend:%d", event.Id)),
+				tgbotapi.NewInlineKeyboardButtonData("❌ Не приду", fmt.Sprintf("event_decline:%d", event.Id)),
+			),
+		)
+		msg.ReplyMarkup = keyboard
+	}
+
+	_, err := b.bot.Send(msg)
+	return err
+}
+
+func (b *TelegramBot) formatEventAlert(event *models.Event, isInitial bool, timeUntilEvent time.Duration) string {
+	var builder strings.Builder
+	
+	if isInitial {
+		builder.WriteString("⭐ <b>Новое событие!</b>\n\n")
+	} else if timeUntilEvent <= 1*time.Minute && timeUntilEvent > -2*time.Minute {
+		builder.WriteString("🚀 <b>Событие началось!</b>\n\n")
+	} else {
+		timeRemaining := b.formatTimeRemaining(timeUntilEvent)
+		builder.WriteString(fmt.Sprintf("📌 <b>Напоминание о событии</b>%s\n\n", timeRemaining))
+	}
+	
+	builder.WriteString(fmt.Sprintf("<b>%s</b>\n", event.Title))
+	
+	if event.Description != "" {
+		builder.WriteString(fmt.Sprintf("\n%s\n", event.Description))
+	}
+	
+	dateInUTC := time.Date(
+		event.Date.Year(), event.Date.Month(), event.Date.Day(),
+		event.Date.Hour(), event.Date.Minute(), event.Date.Second(),
+		event.Date.Nanosecond(), time.UTC,
+	)
+	
+	moscowLocation, err := time.LoadLocation("Europe/Moscow")
+	if err != nil {
+		log.Printf("Warning: failed to load Moscow location: %v, adding 3 hours manually", err)
+		dateInMoscow := dateInUTC.Add(3 * time.Hour)
+		dateStr := dateInMoscow.Format("02.01.2006 в 15:04")
+		builder.WriteString(fmt.Sprintf("\n📆 <b>Дата:</b> %s (МСК)\n", dateStr))
+	} else {
+		dateInMoscow := dateInUTC.In(moscowLocation)
+		dateStr := dateInMoscow.Format("02.01.2006 в 15:04")
+		builder.WriteString(fmt.Sprintf("\n📆 <b>Дата:</b> %s (МСК)\n", dateStr))
+	}
+	
+	if len(event.Hosts) > 0 {
+		builder.WriteString("\n👥 <b>Спикеры:</b>\n")
+		for _, host := range event.Hosts {
+			name := strings.TrimSpace(fmt.Sprintf("%s %s", host.FirstName, host.LastName))
+			if name == "" {
+				name = host.Username
+			}
+			
+			if host.Username != "" {
+				builder.WriteString(fmt.Sprintf("• %s (@%s)\n", name, host.Username))
+			} else {
+				builder.WriteString(fmt.Sprintf("• %s\n", name))
+			}
+		}
+	}
+	
+	if event.PlaceType == models.EventOnline {
+		builder.WriteString(fmt.Sprintf("\n🔗 <b>Ссылка:</b> %s\n", event.Place))
+	} else {
+		place := event.Place
+		if event.CustomPlaceType != "" {
+			place = event.CustomPlaceType + ", " + event.Place
+		}
+		builder.WriteString(fmt.Sprintf("\n📍 <b>Место:</b> %s\n", place))
+	}
+	
+	return builder.String()
+}
+
+func (b *TelegramBot) formatTimeRemaining(timeUntilEvent time.Duration) string {
+	if timeUntilEvent <= 0 {
+		return " (событие началось)"
+	}
+	
+	days := int(timeUntilEvent.Hours()) / 24
+	hours := int(timeUntilEvent.Hours()) % 24
+	minutes := int(timeUntilEvent.Minutes()) % 60
+	
+	var parts []string
+	if days > 0 {
+		parts = append(parts, fmt.Sprintf("%d %s", days, b.pluralize(days, "день", "дня", "дней")))
+	}
+	if hours > 0 {
+		parts = append(parts, fmt.Sprintf("%d %s", hours, b.pluralize(hours, "час", "часа", "часов")))
+	}
+	if minutes > 0 && days == 0 {
+		parts = append(parts, fmt.Sprintf("%d %s", minutes, b.pluralize(minutes, "минута", "минуты", "минут")))
+	}
+	
+	if len(parts) > 0 {
+		return fmt.Sprintf(" (до события осталось %s)", strings.Join(parts, " "))
+	}
+	
+	return ""
+}
+
+func (b *TelegramBot) pluralize(n int, one, few, many string) string {
+	if n%10 == 1 && n%100 != 11 {
+		return one
+	}
+	if n%10 >= 2 && n%10 <= 4 && (n%100 < 10 || n%100 >= 20) {
+		return few
+	}
+	return many
+}
+
+// handleCallbackQuery обрабатывает нажатия на callback кнопки
+func (b *TelegramBot) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
+	data := callback.Data
+	userID := callback.From.ID
+
+	// Парсим callback data
+	if strings.HasPrefix(data, "event_attend:") {
+		eventIdStr := strings.TrimPrefix(data, "event_attend:")
+		var eventId int64
+		fmt.Sscanf(eventIdStr, "%d", &eventId)
+		
+		// Получаем пользователя по telegram_id
+		member, err := b.member.GetByTelegramID(userID)
+		if err != nil {
+			log.Printf("Error getting member by telegram ID %d: %v", userID, err)
+			b.answerCallbackQuery(callback.ID, "Ошибка: пользователь не найден")
+			return
+		}
+
+		// Обновляем подписку на SUBSCRIBED
+		_, err = b.eventAlertSubscription.UpdateSubscriptionStatus(eventId, member.Id, models.EventAlertStatusSubscribed)
+		if err != nil {
+			log.Printf("Error updating subscription status: %v", err)
+			b.answerCallbackQuery(callback.ID, "Ошибка при обновлении подписки")
+			return
+		}
+
+		b.answerCallbackQuery(callback.ID, "Отлично! Вы будете получать напоминания о мероприятии")
+		
+		// Обновляем сообщение, убирая кнопки
+		editMsg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, callback.Message.Text)
+		editMsg.ParseMode = "HTML"
+		b.bot.Send(editMsg)
+
+	} else if strings.HasPrefix(data, "event_decline:") {
+		eventIdStr := strings.TrimPrefix(data, "event_decline:")
+		var eventId int64
+		fmt.Sscanf(eventIdStr, "%d", &eventId)
+		
+		// Получаем пользователя по telegram_id
+		member, err := b.member.GetByTelegramID(userID)
+		if err != nil {
+			log.Printf("Error getting member by telegram ID %d: %v", userID, err)
+			b.answerCallbackQuery(callback.ID, "Ошибка: пользователь не найден")
+			return
+		}
+
+		// Обновляем подписку на UNSUBSCRIBED
+		_, err = b.eventAlertSubscription.UpdateSubscriptionStatus(eventId, member.Id, models.EventAlertStatusUnsubscribed)
+		if err != nil {
+			log.Printf("Error updating subscription status: %v", err)
+			b.answerCallbackQuery(callback.ID, "Ошибка при обновлении подписки")
+			return
+		}
+
+		b.answerCallbackQuery(callback.ID, "Вы отписаны от уведомлений об этом мероприятии")
+		
+		// Обновляем сообщение, убирая кнопки
+		editMsg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, callback.Message.Text)
+		editMsg.ParseMode = "HTML"
+		b.bot.Send(editMsg)
+	}
+}
+
+// answerCallbackQuery отвечает на callback query
+func (b *TelegramBot) answerCallbackQuery(callbackID string, text string) {
+	callbackConfig := tgbotapi.NewCallback(callbackID, text)
+	if _, err := b.bot.Request(callbackConfig); err != nil {
+		log.Printf("Error answering callback query: %v", err)
+	}
+}
+
+// SendInitialEventAlerts отправляет инициализирующие алерты всем подписанным пользователям
+func (b *TelegramBot) SendInitialEventAlerts(event *models.Event) error {
+	members, err := b.member.GetSubscribedMembersWithTelegram()
+	if err != nil {
+		return fmt.Errorf("error getting subscribed members: %v", err)
+	}
+
+	for _, member := range members {
+		if member.TelegramID == 0 {
+			continue
+		}
+
+		_, err := b.eventAlertSubscription.CreateSubscription(event.Id, member.Id)
+		if err != nil {
+			log.Printf("Error creating subscription for member %d: %v", member.Id, err)
+			continue
+		}
+
+		err = b.SendEventAlert(member.TelegramID, event, true)
+		if err != nil {
+			if strings.Contains(err.Error(), "chat not found") {
+				continue
+			}
+			log.Printf("Error sending event alert to user %d: %v", member.TelegramID, err)
+			continue
+		}
+	}
+
+	return nil
+}
+
+func (b *TelegramBot) SendRepeatingEventAlert(event *models.Event) error {
+	members, err := b.eventAlertSubscription.GetSubscribedMembersForEvent(event.Id)
+	if err != nil {
+		return fmt.Errorf("error getting subscribed members for event: %v", err)
+	}
+
+	for _, member := range members {
+		if member.TelegramID == 0 {
+			continue
+		}
+
+		err = b.SendEventAlert(member.TelegramID, event, false)
+		if err != nil {
+			if strings.Contains(err.Error(), "chat not found") {
+				continue
+			}
+			log.Printf("Error sending repeating event alert to user %d: %v", member.TelegramID, err)
+			continue
+		}
+	}
+
+	return nil
+}
+
+func (b *TelegramBot) startEventAlertsScheduler() {
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		b.checkAndSendEventAlerts()
+	}
+}
+
+func (b *TelegramBot) checkAndSendEventAlerts() {
+	now := time.Now()
+	futureEvents, err := b.eventService.GetFutureEvents(now.Add(-1 * time.Minute))
+	if err != nil {
+		log.Printf("Error getting future events for alerts: %v", err)
+		return
+	}
+
+	for _, event := range futureEvents {
+		b.checkReminderAlert(&event, now)
+		b.checkRepeatingAlerts(&event, now)
+	}
+}
+
+func (b *TelegramBot) getReminderInterval() time.Duration {
+	return time.Duration(config.CFG.AlertReminderIntervalMinutes) * time.Minute
+}
+
+func (b *TelegramBot) checkReminderAlert(event *models.Event, now time.Time) {
+	subscriptions, err := b.eventAlertSubscription.GetPendingSubscriptionsForEvent(event.Id)
+	if err != nil {
+		log.Printf("Error getting pending subscriptions: %v", err)
+		return
+	}
+
+	reminderInterval := b.getReminderInterval()
+
+	for _, subscription := range subscriptions {
+		if subscription.ReminderSentAt != nil {
+			if subscription.ReminderSentAt.Add(reminderInterval).Before(now) {
+				_, err := b.eventAlertSubscription.UpdateSubscriptionStatus(
+					subscription.EventId,
+					subscription.MemberId,
+					models.EventAlertStatusUnsubscribed,
+				)
+				if err != nil {
+					log.Printf("Error unsubscribing after reminder: %v", err)
+				}
+			}
+			continue
+		}
+
+		timeSinceCreation := now.Sub(subscription.CreatedAt)
+		if timeSinceCreation >= reminderInterval {
+			member, err := b.member.GetById(subscription.MemberId)
+			if err != nil || member.TelegramID == 0 {
+				continue
+			}
+
+			err = b.SendEventAlert(member.TelegramID, event, true)
+			if err != nil {
+				if strings.Contains(err.Error(), "chat not found") {
+					continue
+				}
+				log.Printf("Error sending reminder alert to user %d: %v", member.TelegramID, err)
+				continue
+			}
+
+			reminderTime := now
+			subscription.ReminderSentAt = &reminderTime
+			_, err = b.eventAlertSubscription.CreateOrUpdate(&subscription)
+			if err != nil {
+				log.Printf("Error updating subscription reminder time: %v", err)
+			}
+		}
+	}
+}
+
+func (b *TelegramBot) getAlertIntervals() (alert7Days, alert1Day, alert1Hour time.Duration) {
+	return time.Duration(config.CFG.Alert7DaysMinutes) * time.Minute,
+	       time.Duration(config.CFG.Alert1DayMinutes) * time.Minute,
+	       time.Duration(config.CFG.Alert1HourMinutes) * time.Minute
+}
+
+func (b *TelegramBot) checkRepeatingAlerts(event *models.Event, now time.Time) {
+	eventTime := event.Date
+	timeUntilEvent := eventTime.Sub(now)
+
+	alert7Days, alert1Day, alert1Hour := b.getAlertIntervals()
+
+	moscowLocation, err := time.LoadLocation("Europe/Moscow")
+	if err != nil {
+		log.Printf("Error loading Moscow location: %v", err)
+		moscowLocation = time.UTC
+	}
+	nowInMoscow := now.In(moscowLocation)
+	
+	scheduledHour := config.CFG.AlertScheduledHour
+	scheduledMinute := config.CFG.AlertScheduledMinute
+
+	shouldSend := false
+	var alertType string
+
+	if timeUntilEvent <= 1*time.Minute && timeUntilEvent > -2*time.Minute {
+		alertType = "start"
+		shouldSend = true
+	} else if timeUntilEvent <= alert1Hour && timeUntilEvent > 1*time.Minute {
+		alertType = "1hour"
+		shouldSend = true
+	} else if timeUntilEvent <= alert1Day && timeUntilEvent > alert1Hour {
+		if nowInMoscow.Hour() == scheduledHour && nowInMoscow.Minute() == scheduledMinute {
+			alertType = "1day"
+			shouldSend = true
+		}
+	} else if timeUntilEvent <= alert7Days && timeUntilEvent > alert1Day {
+		if nowInMoscow.Hour() == scheduledHour && nowInMoscow.Minute() == scheduledMinute {
+			alertType = "7days"
+			shouldSend = true
+		}
+	}
+
+	if shouldSend {
+		if event.LastRepeatingAlertSentAt != nil {
+			if alertType == "start" {
+				timeSinceLastAlert := now.Sub(*event.LastRepeatingAlertSentAt)
+				if timeSinceLastAlert < 2*time.Minute {
+					return
+				}
+			} else {
+				lastSentDay := event.LastRepeatingAlertSentAt.Day()
+				lastSentMonth := event.LastRepeatingAlertSentAt.Month()
+				lastSentYear := event.LastRepeatingAlertSentAt.Year()
+				currentDay := now.Day()
+				currentMonth := now.Month()
+				currentYear := now.Year()
+				
+				if lastSentDay == currentDay && lastSentMonth == currentMonth && lastSentYear == currentYear {
+					return
+				}
+			}
+		}
+		
+		log.Printf("Sending repeating alert for event %d, type: %s, timeUntilEvent: %v", event.Id, alertType, timeUntilEvent)
+		if err := b.SendRepeatingEventAlert(event); err != nil {
+			log.Printf("Error sending repeating alert: %v", err)
+			return
+		}
+		
+		if err := database.DB.Model(&models.Event{}).
+			Where("id = ?", event.Id).
+			Update("last_repeating_alert_sent_at", now).Error; err != nil {
+			log.Printf("Error updating event last alert sent time: %v", err)
+		}
 	}
 }
 

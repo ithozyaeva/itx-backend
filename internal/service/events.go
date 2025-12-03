@@ -3,6 +3,7 @@ package service
 import (
 	"ithozyeva/internal/models"
 	"ithozyeva/internal/repository"
+	"time"
 )
 
 type EventsService struct {
@@ -24,4 +25,9 @@ func (s *EventsService) AddMember(eventId int, memberId int) (*models.Event, err
 
 func (s *EventsService) RemoveMember(eventId int, memberId int) (*models.Event, error) {
 	return s.repo.RemoveMember(eventId, memberId)
+}
+
+// GetFutureEvents получает только будущие события
+func (s *EventsService) GetFutureEvents(now time.Time) ([]models.Event, error) {
+	return s.repo.GetFutureEvents(now)
 }

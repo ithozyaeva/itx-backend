@@ -253,3 +253,18 @@ func (r *MemberRepository) GetAllPermissions() ([]models.Permission, error) {
 	}
 	return permissions, nil
 }
+
+// GetSubscribedMembersWithTelegram получает всех подписанных пользователей (SUBSCRIBER) с telegram_id
+func (r *MemberRepository) GetSubscribedMembersWithTelegram() ([]models.Member, error) {
+	var members []models.Member
+	
+	err := database.DB.
+		Table("members").
+		Joins("INNER JOIN member_roles ON members.id = member_roles.member_id").
+		Where("member_roles.role = ?", models.MemberRoleSubscriber).
+		Where("members.telegram_id IS NOT NULL AND members.telegram_id != 0").
+		Preload("MemberRoles").
+		Find(&members).Error
+	
+	return members, err
+}

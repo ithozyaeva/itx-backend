@@ -2,6 +2,8 @@ package handler
 
 import (
 	"fmt"
+	"log"
+	"ithozyeva/internal/bot"
 	"ithozyeva/internal/models"
 	"ithozyeva/internal/repository"
 	"ithozyeva/internal/service"
@@ -141,4 +143,31 @@ func (h *EventsHandler) GetICSFile(c *fiber.Ctx) error {
 	c.Set("Content-Type", "text/calendar")
 	c.Set("Content-Disposition", fmt.Sprintf("attachment; filename=event_%d.ics", event.Id))
 	return c.SendString(ics)
+}
+
+// Create переопределяет базовый метод Create для отправки алертов при создании события
+func (h *EventsHandler) Create(c *fiber.Ctx) error {
+	event := new(models.Event)
+	if err := c.BodyParser(event); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный запрос"})
+	}
+
+	result, err := h.service.Create(event)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	// Отправляем инициализирующие алерты в фоне
+	go func() {
+		telegramBot := bot.GetGlobalBot()
+		if telegramBot == nil {
+			log.Printf("Telegram bot is not initialized, skipping alerts for event %d", result.Id)
+			return
+		}
+		if err := telegramBot.SendInitialEventAlerts(result); err != nil {
+			log.Printf("Error sending initial event alerts: %v", err)
+		}
+	}()
+
+	return c.Status(fiber.StatusCreated).JSON(result)
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"ithozyeva/database"
 	"ithozyeva/internal/models"
+	"time"
 )
 
 type EventRepository struct {
@@ -52,7 +53,18 @@ func (e *EventRepository) Search(limit *int, offset *int, filter *SearchFilter, 
 }
 
 func (r *EventRepository) Update(entity *models.Event) (*models.Event, error) {
-	err := database.DB.Model(&entity).Save(entity).Error
+	oldEvent, err := r.GetById(entity.Id)
+	if err != nil {
+		return nil, err
+	}
+
+	oldDateTruncated := oldEvent.Date.Truncate(time.Minute)
+	newDateTruncated := entity.Date.Truncate(time.Minute)
+	if !oldDateTruncated.Equal(newDateTruncated) {
+		entity.LastRepeatingAlertSentAt = nil
+	}
+
+	err = database.DB.Model(&entity).Save(entity).Error
 
 	if err != nil {
 		return nil, err
@@ -118,4 +130,16 @@ func (r *EventRepository) RemoveMember(eventId int, memberId int) (*models.Event
 	}
 
 	return entity, nil
+}
+
+func (r *EventRepository) GetFutureEvents(now time.Time) ([]models.Event, error) {
+	var events []models.Event
+	err := database.DB.
+		Model(&models.Event{}).
+		Preload("Hosts").
+		Preload("Members").
+		Preload("EventTags").
+		Where("date >= ?", now).
+		Find(&events).Error
+	return events, err
 }

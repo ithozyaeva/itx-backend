@@ -24,6 +24,7 @@ type Event struct {
 	EventTags       []EventTag `json:"eventTags" gorm:"many2many:event_event_tags;foreignKey:id;joinForeignKey:event_id;References:id;joinReferences:event_tag_id;replace:true"`
 	Hosts           []Member  `json:"hosts" gorm:"many2many:event_hosts;foreignKey:id;joinForeignKey:event_id;References:id;joinReferences:member_id;replace:true"`
 	Members         []Member  `json:"members" gorm:"many2many:event_members;foreignKey:id;joinForeignKey:event_id;References:id;joinReferences:member_id;replace:true"`
+	LastRepeatingAlertSentAt *time.Time `json:"lastRepeatingAlertSentAt" gorm:"column:last_repeating_alert_sent_at"`
 }
 
 type EventTag struct {

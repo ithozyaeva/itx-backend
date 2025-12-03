@@ -43,6 +43,9 @@ func main() {
 			return
 		}
 
+		// Устанавливаем глобальный экземпляр бота
+		bot.SetGlobalBot(telegramBot)
+
 		log.Println("Telegram bot started successfully")
 		telegramBot.Start()
 	}()
