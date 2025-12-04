@@ -126,6 +126,11 @@ func SetupAdminRoutes(app *fiber.App, db *gorm.DB) {
 	events.Post("/", authMiddleware.RequirePermission(models.PermissionCanEditAdminEvents), eventHandler.Create)
 	events.Put("/:id", authMiddleware.RequirePermission(models.PermissionCanEditAdminEvents), eventHandler.Update)
 	events.Delete("/:id", authMiddleware.RequirePermission(models.PermissionCanEditAdminEvents), eventHandler.Delete)
+	resumeHandler := handler.NewResumeHandler()
+	resumes := protected.Group("/resumes", authMiddleware.RequirePermission(models.PermissionCanViewAdminResumes))
+	resumes.Get("/", resumeHandler.AdminList)
+	resumes.Get("/download", resumeHandler.AdminDownload)
+	resumes.Get("/:id", resumeHandler.AdminGet)
 
 	// Маршруты для тегов ивентов
 	eventTagHandler := handler.NewEventTagHandler()
@@ -176,4 +181,11 @@ func SetupPlatformRoutes(app *fiber.App, db *gorm.DB) {
 	referals.Post("/add-link", referalsHandler.AddLink)
 	referals.Put("/update-link", referalsHandler.UpdateLink)
 	referals.Delete("/delete-link", referalsHandler.DeleteLink)
+
+	resumeHandler := handler.NewResumeHandler()
+	resumes := protected.Group("/resumes")
+	resumes.Post("/", resumeHandler.Upload)
+	resumes.Get("/me", resumeHandler.ListMy)
+	resumes.Patch("/:id", resumeHandler.UpdateMy)
+	resumes.Delete("/:id", resumeHandler.DeleteMy)
 }
