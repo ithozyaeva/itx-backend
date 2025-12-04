@@ -21,6 +21,12 @@ type Event struct {
 	EventType       string    `json:"eventType"`
 	Open            bool      `json:"open"`
 	VideoLink       string    `json:"videoLink" gorm:"column:video_link"`
+	EventTags       []EventTag `json:"eventTags" gorm:"many2many:event_event_tags;foreignKey:id;joinForeignKey:event_id;References:id;joinReferences:event_tag_id;replace:true"`
 	Hosts           []Member  `json:"hosts" gorm:"many2many:event_hosts;foreignKey:id;joinForeignKey:event_id;References:id;joinReferences:member_id;replace:true"`
 	Members         []Member  `json:"members" gorm:"many2many:event_members;foreignKey:id;joinForeignKey:event_id;References:id;joinReferences:member_id;replace:true"`
+}
+
+type EventTag struct {
+	Id   int64  `json:"id" gorm:"primaryKey"`
+	Name string `json:"name" gorm:"unique"`
 }

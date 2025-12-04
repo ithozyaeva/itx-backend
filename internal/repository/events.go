@@ -24,7 +24,7 @@ func (e *EventRepository) Search(limit *int, offset *int, filter *SearchFilter, 
 		return nil, 0, err
 	}
 
-	query := database.DB.Model(&models.Event{}).Preload("Hosts").Preload("Members")
+	query := database.DB.Model(&models.Event{}).Preload("Hosts").Preload("Members").Preload("EventTags")
 
 	if filter != nil {
 		for key, value := range *filter {
@@ -60,6 +60,7 @@ func (r *EventRepository) Update(entity *models.Event) (*models.Event, error) {
 
 	database.DB.Model(&entity).Association("Members").Replace(entity.Members)
 	database.DB.Model(&entity).Association("Hosts").Replace(entity.Hosts)
+	database.DB.Model(&entity).Association("EventTags").Replace(entity.EventTags)
 
 	updatedEntity, err := r.BaseRepository.GetById(entity.Id)
 
@@ -73,7 +74,7 @@ func (r *EventRepository) Update(entity *models.Event) (*models.Event, error) {
 // GetById получает отзыв по ID с информацией о услуге
 func (r *EventRepository) GetById(id int64) (*models.Event, error) {
 	var event models.Event
-	if err := database.DB.Preload("Hosts").Preload("Members").First(&event, id).Error; err != nil {
+	if err := database.DB.Preload("Hosts").Preload("Members").Preload("EventTags").First(&event, id).Error; err != nil {
 		return nil, err
 	}
 	return &event, nil
