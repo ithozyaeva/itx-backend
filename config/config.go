@@ -30,6 +30,15 @@ type Config struct {
 	AlertScheduledTime           string
 	AlertScheduledHour           int
 	AlertScheduledMinute         int
+	S3                 S3Config
+}
+
+type S3Config struct {
+	Endpoint  string
+	Region    string
+	AccessKey string
+	SecretKey string
+	Bucket    string
 }
 
 var CFG *Config
@@ -101,5 +110,12 @@ func LoadConfig() {
 		AlertScheduledTime:           alertScheduledTime,
 		AlertScheduledHour:           alertScheduledHour,
 		AlertScheduledMinute:         alertScheduledMinute,
+		S3: S3Config{
+			Endpoint:  viper.GetString("S3_ENDPOINT"),
+			Region:    viper.GetString("S3_REGION"),
+			AccessKey: viper.GetString("S3_ACCESS_KEY"),
+			SecretKey: viper.GetString("S3_SECRET_KEY"),
+			Bucket:    viper.GetString("S3_BUCKET"),
+		},
 	}
 }
