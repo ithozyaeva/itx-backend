@@ -535,17 +535,17 @@ func (b *TelegramBot) checkReminderAlert(event *models.Event, now time.Time) {
 	}
 }
 
-func (b *TelegramBot) getAlertIntervals() (alert7Days, alert1Day, alert1Hour time.Duration) {
-	return time.Duration(config.CFG.Alert7DaysMinutes) * time.Minute,
-	       time.Duration(config.CFG.Alert1DayMinutes) * time.Minute,
-	       time.Duration(config.CFG.Alert1HourMinutes) * time.Minute
+func (b *TelegramBot) getAlertIntervals() (alertFirst, alertSecond, alertThird time.Duration) {
+	return time.Duration(config.CFG.AlertReminderFirstIntervalMinutes) * time.Minute,
+	       time.Duration(config.CFG.AlertReminderSecondIntervalMinutes) * time.Minute,
+	       time.Duration(config.CFG.AlertReminderThirdIntervalMinutes) * time.Minute
 }
 
 func (b *TelegramBot) checkRepeatingAlerts(event *models.Event, now time.Time) {
 	eventTime := event.Date
 	timeUntilEvent := eventTime.Sub(now)
 
-	alert7Days, alert1Day, alert1Hour := b.getAlertIntervals()
+	alertFirst, alertSecond, alertThird := b.getAlertIntervals()
 
 	moscowLocation, err := time.LoadLocation("Europe/Moscow")
 	if err != nil {
@@ -563,17 +563,17 @@ func (b *TelegramBot) checkRepeatingAlerts(event *models.Event, now time.Time) {
 	if timeUntilEvent <= 1*time.Minute && timeUntilEvent > -2*time.Minute {
 		alertType = "start"
 		shouldSend = true
-	} else if timeUntilEvent <= alert1Hour && timeUntilEvent > 1*time.Minute {
-		alertType = "1hour"
+	} else if timeUntilEvent <= alertThird && timeUntilEvent > 1*time.Minute {
+		alertType = "third"
 		shouldSend = true
-	} else if timeUntilEvent <= alert1Day && timeUntilEvent > alert1Hour {
+	} else if timeUntilEvent <= alertSecond && timeUntilEvent > alertThird {
 		if nowInMoscow.Hour() == scheduledHour && nowInMoscow.Minute() == scheduledMinute {
-			alertType = "1day"
+			alertType = "second"
 			shouldSend = true
 		}
-	} else if timeUntilEvent <= alert7Days && timeUntilEvent > alert1Day {
+	} else if timeUntilEvent <= alertFirst && timeUntilEvent > alertSecond {
 		if nowInMoscow.Hour() == scheduledHour && nowInMoscow.Minute() == scheduledMinute {
-			alertType = "7days"
+			alertType = "first"
 			shouldSend = true
 		}
 	}

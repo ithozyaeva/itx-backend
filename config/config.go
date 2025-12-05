@@ -22,15 +22,15 @@ type Config struct {
 	TelegramMainChatID int64
 	PublicDomain       string
 	BackendDomain      string
-	
+	S3                 S3Config
+
 	AlertReminderIntervalMinutes int64
-	Alert7DaysMinutes            int64
-	Alert1DayMinutes             int64
-	Alert1HourMinutes            int64
+	AlertReminderFirstIntervalMinutes  int64
+	AlertReminderSecondIntervalMinutes int64
+	AlertReminderThirdIntervalMinutes  int64
 	AlertScheduledTime           string
 	AlertScheduledHour           int
 	AlertScheduledMinute         int
-	S3                 S3Config
 }
 
 type S3Config struct {
@@ -53,19 +53,19 @@ func LoadConfig() {
 		alertReminderInterval = 1440
 	}
 	
-	alert7Days := viper.GetInt64("ALERT_7DAYS_MINUTES")
-	if alert7Days == 0 {
-		alert7Days = 10080
+	alertReminderFirst := viper.GetInt64("ALERT_REMINDER_FIRST_INTERVAL_MINUTES")
+	if alertReminderFirst == 0 {
+		alertReminderFirst = 10080
 	}
 	
-	alert1Day := viper.GetInt64("ALERT_1DAY_MINUTES")
-	if alert1Day == 0 {
-		alert1Day = 1440
+	alertReminderSecond := viper.GetInt64("ALERT_REMINDER_SECOND_INTERVAL_MINUTES")
+	if alertReminderSecond == 0 {
+		alertReminderSecond = 1440
 	}
 	
-	alert1Hour := viper.GetInt64("ALERT_1HOUR_MINUTES")
-	if alert1Hour == 0 {
-		alert1Hour = 60
+	alertReminderThird := viper.GetInt64("ALERT_REMINDER_THIRD_INTERVAL_MINUTES")
+	if alertReminderThird == 0 {
+		alertReminderThird = 60
 	}
 
 	var alertScheduledTime string
@@ -104,9 +104,9 @@ func LoadConfig() {
 		PublicDomain:       viper.GetString("PUBLIC_DOMAIN"),
 		BackendDomain:      viper.GetString("BACKEND_DOMAIN"),
 		AlertReminderIntervalMinutes: alertReminderInterval,
-		Alert7DaysMinutes:            alert7Days,
-		Alert1DayMinutes:             alert1Day,
-		Alert1HourMinutes:            alert1Hour,
+		AlertReminderFirstIntervalMinutes:  alertReminderFirst,
+		AlertReminderSecondIntervalMinutes: alertReminderSecond,
+		AlertReminderThirdIntervalMinutes:  alertReminderThird,
 		AlertScheduledTime:           alertScheduledTime,
 		AlertScheduledHour:           alertScheduledHour,
 		AlertScheduledMinute:         alertScheduledMinute,
