@@ -24,13 +24,13 @@ type Config struct {
 	BackendDomain      string
 	S3                 S3Config
 
-	AlertReminderIntervalMinutes int64
+	AlertReminderIntervalMinutes       int64
 	AlertReminderFirstIntervalMinutes  int64
 	AlertReminderSecondIntervalMinutes int64
 	AlertReminderThirdIntervalMinutes  int64
-	AlertScheduledTime           string
-	AlertScheduledHour           int
-	AlertScheduledMinute         int
+	AlertScheduledTime                 string
+	AlertScheduledHour                 int
+	AlertScheduledMinute               int
 }
 
 type S3Config struct {
@@ -103,13 +103,13 @@ func LoadConfig() {
 		TelegramMainChatID: viper.GetInt64("TELEGRAM_MAIN_CHAT_ID"),
 		PublicDomain:       viper.GetString("PUBLIC_DOMAIN"),
 		BackendDomain:      viper.GetString("BACKEND_DOMAIN"),
-		AlertReminderIntervalMinutes: alertReminderInterval,
+		AlertReminderIntervalMinutes:       alertReminderInterval,
 		AlertReminderFirstIntervalMinutes:  alertReminderFirst,
 		AlertReminderSecondIntervalMinutes: alertReminderSecond,
 		AlertReminderThirdIntervalMinutes:  alertReminderThird,
-		AlertScheduledTime:           alertScheduledTime,
-		AlertScheduledHour:           alertScheduledHour,
-		AlertScheduledMinute:         alertScheduledMinute,
+		AlertScheduledTime:                 alertScheduledTime,
+		AlertScheduledHour:                 alertScheduledHour,
+		AlertScheduledMinute:               alertScheduledMinute,
 		S3: S3Config{
 			Endpoint:  viper.GetString("S3_ENDPOINT"),
 			Region:    viper.GetString("S3_REGION"),

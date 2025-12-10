@@ -132,14 +132,3 @@ func (r *EventRepository) RemoveMember(eventId int, memberId int) (*models.Event
 	return entity, nil
 }
 
-func (r *EventRepository) GetFutureEvents(now time.Time) ([]models.Event, error) {
-	var events []models.Event
-	err := database.DB.
-		Model(&models.Event{}).
-		Preload("Hosts").
-		Preload("Members").
-		Preload("EventTags").
-		Where("date >= ?", now).
-		Find(&events).Error
-	return events, err
-}
