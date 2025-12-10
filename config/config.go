@@ -1,6 +1,8 @@
 package config
 
 import (
+	"log"
+	"time"
 	"github.com/spf13/viper"
 )
 
@@ -21,6 +23,14 @@ type Config struct {
 	PublicDomain       string
 	BackendDomain      string
 	S3                 S3Config
+
+	AlertReminderIntervalMinutes       int64
+	AlertReminderFirstIntervalMinutes  int64
+	AlertReminderSecondIntervalMinutes int64
+	AlertReminderThirdIntervalMinutes  int64
+	AlertScheduledTime                 string
+	AlertScheduledHour                 int
+	AlertScheduledMinute               int
 }
 
 type S3Config struct {
@@ -38,6 +48,47 @@ func LoadConfig() {
 	_ = viper.ReadInConfig()
 	viper.AutomaticEnv()
 
+	alertReminderInterval := viper.GetInt64("ALERT_REMINDER_INTERVAL_MINUTES")
+	if alertReminderInterval == 0 {
+		alertReminderInterval = 1440
+	}
+	
+	alertReminderFirst := viper.GetInt64("ALERT_REMINDER_FIRST_INTERVAL_MINUTES")
+	if alertReminderFirst == 0 {
+		alertReminderFirst = 10080
+	}
+	
+	alertReminderSecond := viper.GetInt64("ALERT_REMINDER_SECOND_INTERVAL_MINUTES")
+	if alertReminderSecond == 0 {
+		alertReminderSecond = 1440
+	}
+	
+	alertReminderThird := viper.GetInt64("ALERT_REMINDER_THIRD_INTERVAL_MINUTES")
+	if alertReminderThird == 0 {
+		alertReminderThird = 60
+	}
+
+	var alertScheduledTime string
+	var alertScheduledHour, alertScheduledMinute int
+	
+	if viper.IsSet("ALERT_SCHEDULED_TIME") {
+		alertScheduledTime = viper.GetString("ALERT_SCHEDULED_TIME")
+		parsedTime, err := time.Parse("15:04", alertScheduledTime)
+		if err != nil {
+			log.Printf("Warning: ALERT_SCHEDULED_TIME=%s is invalid (expected HH:MM format), using default 12:00", alertScheduledTime)
+			alertScheduledTime = "12:00"
+			alertScheduledHour = 12
+			alertScheduledMinute = 0
+		} else {
+			alertScheduledHour = parsedTime.Hour()
+			alertScheduledMinute = parsedTime.Minute()
+		}
+	} else {
+		alertScheduledTime = "12:00"
+		alertScheduledHour = 12
+		alertScheduledMinute = 0
+	}
+
 	CFG = &Config{
 		Database: DatabaseConfig{
 			Host:     viper.GetString("DB_HOST"),
@@ -52,6 +103,13 @@ func LoadConfig() {
 		TelegramMainChatID: viper.GetInt64("TELEGRAM_MAIN_CHAT_ID"),
 		PublicDomain:       viper.GetString("PUBLIC_DOMAIN"),
 		BackendDomain:      viper.GetString("BACKEND_DOMAIN"),
+		AlertReminderIntervalMinutes:       alertReminderInterval,
+		AlertReminderFirstIntervalMinutes:  alertReminderFirst,
+		AlertReminderSecondIntervalMinutes: alertReminderSecond,
+		AlertReminderThirdIntervalMinutes:  alertReminderThird,
+		AlertScheduledTime:                 alertScheduledTime,
+		AlertScheduledHour:                 alertScheduledHour,
+		AlertScheduledMinute:               alertScheduledMinute,
 		S3: S3Config{
 			Endpoint:  viper.GetString("S3_ENDPOINT"),
 			Region:    viper.GetString("S3_REGION"),

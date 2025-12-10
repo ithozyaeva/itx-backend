@@ -15,6 +15,8 @@ RUN GOARCH=amd64 CGO_ENABLED=0 GOOS=linux go build -o backend ./cmd
 
 FROM alpine
 
+RUN apk add --no-cache tzdata
+
 WORKDIR /app
 
 COPY --from=builder /app/backend /backend

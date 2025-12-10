@@ -52,3 +52,11 @@ func (s *MemberService) GetPermissions(memberId int64) ([]models.Permission, err
 func (s *MemberService) GetAllPermissions() ([]models.Permission, error) {
 	return s.repo.GetAllPermissions()
 }
+
+func (s *MemberService) GetByTelegramID(telegramID int64) (*models.Member, error) {
+	return s.repo.GetByTelegramID(telegramID)
+}
+
+func (s *MemberService) GetSubscribedMembersWithTelegram() ([]models.Member, error) {
+	return s.repo.GetSubscribedMembersWithTelegram()
+}
