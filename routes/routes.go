@@ -162,10 +162,10 @@ func SetupPlatformRoutes(app *fiber.App, db *gorm.DB) {
 	// Маршруты для ментора
 	mentorsHandler := handler.NewMentorHandler()
 	mentorsMe := protected.Group("/mentors/me")
-	mentorsMe.Post("/update-info", authMiddleware.RequirePermission(models.PermissionCanEditAdminMentors), mentorsHandler.UpdateInfo)
-	mentorsMe.Post("/update-prof-tags", authMiddleware.RequirePermission(models.PermissionCanEditAdminMentors), mentorsHandler.UpdateProfTags)
-	mentorsMe.Post("/update-services", authMiddleware.RequirePermission(models.PermissionCanEditAdminMentors), mentorsHandler.UpdateServices)
-	mentorsMe.Post("/update-contacts", authMiddleware.RequirePermission(models.PermissionCanEditAdminMentors), mentorsHandler.UpdateContacts)
+	mentorsMe.Post("/update-info", authMiddleware.RequirePermission(models.PermissionCanEditPlatformMentors), mentorsHandler.UpdateInfo)
+	mentorsMe.Post("/update-prof-tags", authMiddleware.RequirePermission(models.PermissionCanEditPlatformMentors), mentorsHandler.UpdateProfTags)
+	mentorsMe.Post("/update-services", authMiddleware.RequirePermission(models.PermissionCanEditPlatformMentors), mentorsHandler.UpdateServices)
+	mentorsMe.Post("/update-contacts", authMiddleware.RequirePermission(models.PermissionCanEditPlatformMentors), mentorsHandler.UpdateContacts)
 
 	// Маршруты для ивентов
 	eventHandler := handler.NewEventsHandler()
