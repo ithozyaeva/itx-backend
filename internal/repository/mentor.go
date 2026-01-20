@@ -196,10 +196,9 @@ func (r *MentorRepository) UpdateWithRelations(mentor *models.MentorDbModel) (*m
 	}()
 
 	// Проверяем существование ментора
-	var existingMentor models.MentorDbShortModel
-	if err := tx.First(&existingMentor, mentor.Id).Error; err != nil {
-		tx.Rollback()
-		return nil, err
+	var existingMentor, memeberExistenceError = r.GetByMemberID(mentor.MemberId)
+	if memeberExistenceError != nil {
+		return nil, memeberExistenceError
 	}
 
 	// Обновляем базовую модель ментора
@@ -220,6 +219,7 @@ func (r *MentorRepository) UpdateWithRelations(mentor *models.MentorDbModel) (*m
 		Occupation: existingMentor.Occupation,
 		Experience: existingMentor.Experience,
 		Order:      existingMentor.Order,
+		Member:     existingMentor.Member,
 	}
 
 	// Обрабатываем связанные сущности
@@ -244,14 +244,6 @@ func (r *MentorRepository) UpdateWithRelations(mentor *models.MentorDbModel) (*m
 		return nil, err
 	}
 	result.Services = servicesInterface.([]models.Service)
-
-	// Загружаем информацию о пользователе
-	var member models.Member
-	if err := tx.First(&member, existingMentor.MemberId).Error; err != nil {
-		tx.Rollback()
-		return nil, err
-	}
-	result.Member = member
 
 	// Фиксируем транзакцию
 	if err := tx.Commit().Error; err != nil {
@@ -552,10 +544,10 @@ func (r *MentorRepository) GetByMemberID(memberId int64) (*models.MentorDbModel,
 	err := database.DB.Model(&models.MentorDbModel{}).
 		Where("\"memberId\" = ?", memberId).
 		Preload("Member").
+		Preload("Member.MemberRoles").
 		Preload("ProfTags").
 		Preload("Contacts").
 		Preload("Services").
-		Preload("Roles").
 		First(&entity).Error
 
 	if err != nil {
