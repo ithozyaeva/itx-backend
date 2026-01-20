@@ -555,6 +555,7 @@ func (r *MentorRepository) GetByMemberID(memberId int64) (*models.MentorDbModel,
 		Preload("ProfTags").
 		Preload("Contacts").
 		Preload("Services").
+		Preload("Roles").
 		First(&entity).Error
 
 	if err != nil {

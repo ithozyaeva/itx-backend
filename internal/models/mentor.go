@@ -28,7 +28,7 @@ type MentorModel struct {
 	Occupation string    `json:"occupation"`
 	Experience string    `json:"experience"`
 	Birthday   *DateOnly `json:"birthday"`
-	Role       Role      `json:"role"`
+	Roles      []Role    `json:"roles"`
 	Order      int       `json:"order"`
 	MemberId   int       `json:"memberId"`
 	ProfTags   []ProfTag `json:"profTags"`
@@ -68,7 +68,7 @@ func (m *MentorDbModel) ToModel() MentorModel {
 		FirstName:  m.Member.FirstName,
 		LastName:   m.Member.LastName,
 		Birthday:   m.Member.Birthday,
-		Role:       MemberRoleMentor,
+		Roles:      m.Member.Roles,
 		Occupation: m.Occupation,
 		Experience: m.Experience,
 		Order:      m.Order,
