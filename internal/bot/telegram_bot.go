@@ -79,7 +79,7 @@ func NewTelegramBot() (*TelegramBot, error) {
 func (b *TelegramBot) Start() {
 	// Start birthday checker
 	go b.startBirthdayChecker()
-	
+
 	// Start event alerts scheduler
 	go b.startEventAlertsScheduler()
 
@@ -231,7 +231,7 @@ func (b *TelegramBot) SendEventAlert(telegramID int64, event *models.Event, isIn
 
 func (b *TelegramBot) formatEventAlert(event *models.Event, isInitial bool, timeUntilEvent time.Duration) string {
 	var builder strings.Builder
-	
+
 	if isInitial {
 		builder.WriteString("⭐ <b>Новое событие!</b>\n\n")
 	} else if timeUntilEvent <= 1*time.Minute && timeUntilEvent > -2*time.Minute {
@@ -240,31 +240,65 @@ func (b *TelegramBot) formatEventAlert(event *models.Event, isInitial bool, time
 		timeRemaining := b.formatTimeRemaining(timeUntilEvent)
 		builder.WriteString(fmt.Sprintf("📌 <b>Напоминание о событии</b>%s\n\n", timeRemaining))
 	}
-	
+
 	builder.WriteString(fmt.Sprintf("<b>%s</b>\n", event.Title))
-	
+
 	if event.Description != "" {
 		builder.WriteString(fmt.Sprintf("\n%s\n", event.Description))
 	}
-	
+
 	dateInUTC := time.Date(
 		event.Date.Year(), event.Date.Month(), event.Date.Day(),
 		event.Date.Hour(), event.Date.Minute(), event.Date.Second(),
 		event.Date.Nanosecond(), time.UTC,
 	)
-	
+
+	// Определяем таймзону события
+	timezone := event.Timezone
+	if timezone == "" {
+		timezone = "UTC"
+	}
+
+	// Парсим таймзону (формат: UTC, UTC+3, UTC-5 и т.д.)
+	var timezoneOffset time.Duration
+	if timezone == "UTC" {
+		timezoneOffset = 0
+	} else {
+		// Парсим смещение (например, UTC+3 -> +3 часа)
+		var hours int
+		var sign int = 1
+		if strings.HasPrefix(timezone, "UTC+") {
+			fmt.Sscanf(timezone, "UTC+%d", &hours)
+		} else if strings.HasPrefix(timezone, "UTC-") {
+			fmt.Sscanf(timezone, "UTC-%d", &hours)
+			sign = -1
+		}
+		timezoneOffset = time.Duration(sign*hours) * time.Hour
+	}
+
+	// Вычисляем дату в таймзоне события
+	dateInEventTimezone := dateInUTC.Add(timezoneOffset)
+	dateStr := dateInEventTimezone.Format("02.01.2006 в 15:04")
+
+	// Также показываем в МСК для удобства
 	moscowLocation, err := time.LoadLocation("Europe/Moscow")
+	var moscowDateStr string
 	if err != nil {
 		log.Printf("Warning: failed to load Moscow location: %v, adding 3 hours manually", err)
 		dateInMoscow := dateInUTC.Add(3 * time.Hour)
-		dateStr := dateInMoscow.Format("02.01.2006 в 15:04")
-		builder.WriteString(fmt.Sprintf("\n📆 <b>Дата:</b> %s (МСК)\n", dateStr))
+		moscowDateStr = dateInMoscow.Format("02.01.2006 в 15:04")
 	} else {
 		dateInMoscow := dateInUTC.In(moscowLocation)
-		dateStr := dateInMoscow.Format("02.01.2006 в 15:04")
-		builder.WriteString(fmt.Sprintf("\n📆 <b>Дата:</b> %s (МСК)\n", dateStr))
+		moscowDateStr = dateInMoscow.Format("02.01.2006 в 15:04")
 	}
-	
+
+	// Если таймзона события не МСК, показываем обе
+	if timezone != "UTC+3" && timezone != "Europe/Moscow" {
+		builder.WriteString(fmt.Sprintf("\n📆 <b>Дата:</b> %s (%s) / %s (МСК)\n", dateStr, timezone, moscowDateStr))
+	} else {
+		builder.WriteString(fmt.Sprintf("\n📆 <b>Дата:</b> %s (МСК)\n", moscowDateStr))
+	}
+
 	if len(event.Hosts) > 0 {
 		builder.WriteString("\n👥 <b>Спикеры:</b>\n")
 		for _, host := range event.Hosts {
@@ -272,7 +306,7 @@ func (b *TelegramBot) formatEventAlert(event *models.Event, isInitial bool, time
 			if name == "" {
 				name = host.Username
 			}
-			
+
 			if host.Username != "" {
 				builder.WriteString(fmt.Sprintf("• %s (@%s)\n", name, host.Username))
 			} else {
@@ -280,7 +314,7 @@ func (b *TelegramBot) formatEventAlert(event *models.Event, isInitial bool, time
 			}
 		}
 	}
-	
+
 	if event.PlaceType == models.EventOnline {
 		builder.WriteString(fmt.Sprintf("\n🔗 <b>Ссылка:</b> %s\n", event.Place))
 	} else {
@@ -290,7 +324,46 @@ func (b *TelegramBot) formatEventAlert(event *models.Event, isInitial bool, time
 		}
 		builder.WriteString(fmt.Sprintf("\n📍 <b>Место:</b> %s\n", place))
 	}
-	
+
+	// Добавляем информацию о повторениях
+	if event.IsRepeating && event.RepeatPeriod != nil {
+		builder.WriteString("\n🔄 <b>Повторяющееся событие:</b> ")
+		interval := 1
+		if event.RepeatInterval != nil {
+			interval = *event.RepeatInterval
+		}
+
+		periodLabels := map[string]string{
+			"DAILY":   "день",
+			"WEEKLY":  "неделя",
+			"MONTHLY": "месяц",
+			"YEARLY":  "год",
+		}
+
+		periodLabel := periodLabels[*event.RepeatPeriod]
+		if periodLabel == "" {
+			periodLabel = strings.ToLower(*event.RepeatPeriod)
+		}
+
+		if interval == 1 {
+			builder.WriteString(fmt.Sprintf("каждый %s", periodLabel))
+		} else {
+			builder.WriteString(fmt.Sprintf("каждые %d %s", interval, b.pluralizePeriod(interval, periodLabel)))
+		}
+
+		if event.RepeatEndDate != nil {
+			moscowLocation, err := time.LoadLocation("Europe/Moscow")
+			if err != nil {
+				dateInMoscow := event.RepeatEndDate.In(time.UTC).Add(3 * time.Hour)
+				builder.WriteString(fmt.Sprintf(" до %s", dateInMoscow.Format("02.01.2006")))
+			} else {
+				dateInMoscow := event.RepeatEndDate.In(moscowLocation)
+				builder.WriteString(fmt.Sprintf(" до %s", dateInMoscow.Format("02.01.2006")))
+			}
+		}
+		builder.WriteString("\n")
+	}
+
 	return builder.String()
 }
 
@@ -298,11 +371,11 @@ func (b *TelegramBot) formatTimeRemaining(timeUntilEvent time.Duration) string {
 	if timeUntilEvent <= 0 {
 		return " (событие началось)"
 	}
-	
+
 	days := int(timeUntilEvent.Hours()) / 24
 	hours := int(timeUntilEvent.Hours()) % 24
 	minutes := int(timeUntilEvent.Minutes()) % 60
-	
+
 	var parts []string
 	if days > 0 {
 		parts = append(parts, fmt.Sprintf("%d %s", days, b.pluralize(days, "день", "дня", "дней")))
@@ -313,11 +386,11 @@ func (b *TelegramBot) formatTimeRemaining(timeUntilEvent time.Duration) string {
 	if minutes > 0 && days == 0 {
 		parts = append(parts, fmt.Sprintf("%d %s", minutes, b.pluralize(minutes, "минута", "минуты", "минут")))
 	}
-	
+
 	if len(parts) > 0 {
 		return fmt.Sprintf(" (до события осталось %s)", strings.Join(parts, " "))
 	}
-	
+
 	return ""
 }
 
@@ -331,6 +404,27 @@ func (b *TelegramBot) pluralize(n int, one, few, many string) string {
 	return many
 }
 
+func (b *TelegramBot) pluralizePeriod(n int, period string) string {
+	forms := map[string][]string{
+		"день":   {"дня", "дней"},
+		"неделя": {"недели", "недель"},
+		"месяц":  {"месяца", "месяцев"},
+		"год":    {"года", "лет"},
+	}
+
+	if forms[period] == nil {
+		return period
+	}
+
+	if n%10 == 1 && n%100 != 11 {
+		return period
+	}
+	if n%10 >= 2 && n%10 <= 4 && (n%100 < 10 || n%100 >= 20) {
+		return forms[period][0]
+	}
+	return forms[period][1]
+}
+
 // handleCallbackQuery обрабатывает нажатия на callback кнопки
 func (b *TelegramBot) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 	data := callback.Data
@@ -341,7 +435,7 @@ func (b *TelegramBot) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 		eventIdStr := strings.TrimPrefix(data, "event_attend:")
 		var eventId int64
 		fmt.Sscanf(eventIdStr, "%d", &eventId)
-		
+
 		// Получаем пользователя по telegram_id
 		member, err := b.member.GetByTelegramID(userID)
 		if err != nil {
@@ -359,7 +453,7 @@ func (b *TelegramBot) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 		}
 
 		b.answerCallbackQuery(callback.ID, "Отлично! Вы будете получать напоминания о мероприятии")
-		
+
 		// Обновляем сообщение, убирая кнопки
 		editMsg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, callback.Message.Text)
 		editMsg.ParseMode = "HTML"
@@ -369,7 +463,7 @@ func (b *TelegramBot) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 		eventIdStr := strings.TrimPrefix(data, "event_decline:")
 		var eventId int64
 		fmt.Sscanf(eventIdStr, "%d", &eventId)
-		
+
 		// Получаем пользователя по telegram_id
 		member, err := b.member.GetByTelegramID(userID)
 		if err != nil {
@@ -387,7 +481,7 @@ func (b *TelegramBot) handleCallbackQuery(callback *tgbotapi.CallbackQuery) {
 		}
 
 		b.answerCallbackQuery(callback.ID, "Вы отписаны от уведомлений об этом мероприятии")
-		
+
 		// Обновляем сообщение, убирая кнопки
 		editMsg := tgbotapi.NewEditMessageText(callback.Message.Chat.ID, callback.Message.MessageID, callback.Message.Text)
 		editMsg.ParseMode = "HTML"
@@ -477,8 +571,90 @@ func (b *TelegramBot) checkAndSendEventAlerts() {
 
 	for _, event := range futureEvents {
 		b.checkReminderAlert(&event, now)
-		b.checkRepeatingAlerts(&event, now)
+
+		// Для повторяющихся событий проверяем все будущие повторения
+		if event.IsRepeating && event.RepeatPeriod != nil {
+			b.checkRepeatingEventOccurrences(&event, now)
+		} else {
+			// Для обычных событий проверяем только исходную дату
+			b.checkRepeatingAlerts(&event, now)
+		}
 	}
+}
+
+// getNextOccurrence вычисляет следующее повторение события после указанной даты
+func (b *TelegramBot) getNextOccurrence(event *models.Event, after time.Time) *time.Time {
+	if !event.IsRepeating || event.RepeatPeriod == nil {
+		return nil
+	}
+
+	interval := 1
+	if event.RepeatInterval != nil {
+		interval = *event.RepeatInterval
+	}
+
+	// Проверяем, не истекло ли событие
+	if event.RepeatEndDate != nil && after.After(*event.RepeatEndDate) {
+		return nil
+	}
+
+	// Начинаем с исходной даты события
+	currentDate := event.Date
+
+	// Если исходная дата уже прошла, вычисляем следующее повторение
+	if currentDate.Before(after) || currentDate.Equal(after) {
+		switch *event.RepeatPeriod {
+		case "DAILY":
+			daysSinceStart := int(after.Sub(currentDate).Hours() / 24)
+			nextOccurrenceDays := ((daysSinceStart / interval) + 1) * interval
+			currentDate = currentDate.AddDate(0, 0, nextOccurrenceDays)
+		case "WEEKLY":
+			weeksSinceStart := int(after.Sub(currentDate).Hours() / (24 * 7))
+			nextOccurrenceWeeks := ((weeksSinceStart / interval) + 1) * interval
+			currentDate = currentDate.AddDate(0, 0, nextOccurrenceWeeks*7)
+		case "MONTHLY":
+			monthsSinceStart := 0
+			tempDate := currentDate
+			for tempDate.Before(after) || tempDate.Equal(after) {
+				tempDate = tempDate.AddDate(0, interval, 0)
+				if tempDate.Before(after) || tempDate.Equal(after) {
+					monthsSinceStart++
+				}
+			}
+			currentDate = currentDate.AddDate(0, (monthsSinceStart+1)*interval, 0)
+		case "YEARLY":
+			yearsSinceStart := 0
+			tempDate := currentDate
+			for tempDate.Before(after) || tempDate.Equal(after) {
+				tempDate = tempDate.AddDate(interval, 0, 0)
+				if tempDate.Before(after) || tempDate.Equal(after) {
+					yearsSinceStart++
+				}
+			}
+			currentDate = currentDate.AddDate((yearsSinceStart+1)*interval, 0, 0)
+		}
+	}
+
+	// Проверяем ограничения по дате окончания
+	if event.RepeatEndDate != nil && currentDate.After(*event.RepeatEndDate) {
+		return nil
+	}
+
+	return &currentDate
+}
+
+// checkRepeatingEventOccurrences проверяет и отправляет алерты для всех будущих повторений события
+func (b *TelegramBot) checkRepeatingEventOccurrences(event *models.Event, now time.Time) {
+	// Получаем следующее повторение события
+	nextOccurrence := b.getNextOccurrence(event, now)
+	if nextOccurrence == nil {
+		return
+	}
+
+	// Создаем временное событие с датой следующего повторения для проверки алертов
+	tempEvent := *event
+	tempEvent.Date = *nextOccurrence
+	b.checkRepeatingAlerts(&tempEvent, now)
 }
 
 func (b *TelegramBot) getReminderInterval() time.Duration {
@@ -537,8 +713,8 @@ func (b *TelegramBot) checkReminderAlert(event *models.Event, now time.Time) {
 
 func (b *TelegramBot) getAlertIntervals() (alertFirst, alertSecond, alertThird time.Duration) {
 	return time.Duration(config.CFG.AlertReminderFirstIntervalMinutes) * time.Minute,
-	       time.Duration(config.CFG.AlertReminderSecondIntervalMinutes) * time.Minute,
-	       time.Duration(config.CFG.AlertReminderThirdIntervalMinutes) * time.Minute
+		time.Duration(config.CFG.AlertReminderSecondIntervalMinutes) * time.Minute,
+		time.Duration(config.CFG.AlertReminderThirdIntervalMinutes) * time.Minute
 }
 
 func (b *TelegramBot) checkRepeatingAlerts(event *models.Event, now time.Time) {
@@ -553,7 +729,7 @@ func (b *TelegramBot) checkRepeatingAlerts(event *models.Event, now time.Time) {
 		moscowLocation = time.UTC
 	}
 	nowInMoscow := now.In(moscowLocation)
-	
+
 	scheduledHour := config.CFG.AlertScheduledHour
 	scheduledMinute := config.CFG.AlertScheduledMinute
 
@@ -592,19 +768,19 @@ func (b *TelegramBot) checkRepeatingAlerts(event *models.Event, now time.Time) {
 				currentDay := now.Day()
 				currentMonth := now.Month()
 				currentYear := now.Year()
-				
+
 				if lastSentDay == currentDay && lastSentMonth == currentMonth && lastSentYear == currentYear {
 					return
 				}
 			}
 		}
-		
+
 		log.Printf("Sending repeating alert for event %d, type: %s, timeUntilEvent: %v", event.Id, alertType, timeUntilEvent)
 		if err := b.SendRepeatingEventAlert(event); err != nil {
 			log.Printf("Error sending repeating alert: %v", err)
 			return
 		}
-		
+
 		if err := database.DB.Model(&models.Event{}).
 			Where("id = ?", event.Id).
 			Update("last_repeating_alert_sent_at", now).Error; err != nil {
