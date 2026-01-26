@@ -27,14 +27,25 @@ func (s *EventsService) RemoveMember(eventId int, memberId int) (*models.Event, 
 	return s.repo.RemoveMember(eventId, memberId)
 }
 
-// GetFutureEvents получает только будущие события
 func (s *EventsService) GetFutureEvents(now time.Time) ([]models.Event, error) {
-	filter := &repository.SearchFilter{
-		"date >= ?": now,
-	}
-	result, err := s.Search(nil, nil, filter, nil)
+	allEvents, _, err := s.repo.Search(nil, nil, nil, nil)
 	if err != nil {
 		return nil, err
 	}
-	return result.Items, nil
+
+	var futureEvents []models.Event
+	for _, event := range allEvents {
+		if event.IsRepeating && event.RepeatPeriod != nil {
+			if event.RepeatEndDate != nil && now.After(*event.RepeatEndDate) {
+				continue
+			}
+			futureEvents = append(futureEvents, event)
+		} else {
+			if event.Date.After(now) || event.Date.Equal(now) {
+				futureEvents = append(futureEvents, event)
+			}
+		}
+	}
+
+	return futureEvents, nil
 }
