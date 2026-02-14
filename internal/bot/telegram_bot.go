@@ -247,57 +247,19 @@ func (b *TelegramBot) formatEventAlert(event *models.Event, isInitial bool, time
 		builder.WriteString(fmt.Sprintf("\n%s\n", event.Description))
 	}
 
-	dateInUTC := time.Date(
-		event.Date.Year(), event.Date.Month(), event.Date.Day(),
-		event.Date.Hour(), event.Date.Minute(), event.Date.Second(),
-		event.Date.Nanosecond(), time.UTC,
-	)
-
-	// Определяем таймзону события
-	timezone := event.Timezone
-	if timezone == "" {
-		timezone = "UTC"
-	}
-
-	// Парсим таймзону (формат: UTC, UTC+3, UTC-5 и т.д.)
-	var timezoneOffset time.Duration
-	if timezone == "UTC" {
-		timezoneOffset = 0
-	} else {
-		// Парсим смещение (например, UTC+3 -> +3 часа)
-		var hours int
-		var sign int = 1
-		if strings.HasPrefix(timezone, "UTC+") {
-			fmt.Sscanf(timezone, "UTC+%d", &hours)
-		} else if strings.HasPrefix(timezone, "UTC-") {
-			fmt.Sscanf(timezone, "UTC-%d", &hours)
-			sign = -1
-		}
-		timezoneOffset = time.Duration(sign*hours) * time.Hour
-	}
-
-	// Вычисляем дату в таймзоне события
-	dateInEventTimezone := dateInUTC.Add(timezoneOffset)
-	dateStr := dateInEventTimezone.Format("02.01.2006 в 15:04")
-
-	// Также показываем в МСК для удобства
+	// Конвертируем время из UTC в МСК
 	moscowLocation, err := time.LoadLocation("Europe/Moscow")
 	var moscowDateStr string
 	if err != nil {
 		log.Printf("Warning: failed to load Moscow location: %v, adding 3 hours manually", err)
-		dateInMoscow := dateInUTC.Add(3 * time.Hour)
+		dateInMoscow := event.Date.UTC().Add(3 * time.Hour)
 		moscowDateStr = dateInMoscow.Format("02.01.2006 в 15:04")
 	} else {
-		dateInMoscow := dateInUTC.In(moscowLocation)
+		dateInMoscow := event.Date.In(moscowLocation)
 		moscowDateStr = dateInMoscow.Format("02.01.2006 в 15:04")
 	}
 
-	// Если таймзона события не МСК, показываем обе
-	if timezone != "UTC+3" && timezone != "Europe/Moscow" {
-		builder.WriteString(fmt.Sprintf("\n📆 <b>Дата:</b> %s (%s) / %s (МСК)\n", dateStr, timezone, moscowDateStr))
-	} else {
-		builder.WriteString(fmt.Sprintf("\n📆 <b>Дата:</b> %s (МСК)\n", moscowDateStr))
-	}
+	builder.WriteString(fmt.Sprintf("\n📆 <b>Дата:</b> %s (МСК)\n", moscowDateStr))
 
 	if len(event.Hosts) > 0 {
 		builder.WriteString("\n👥 <b>Спикеры:</b>\n")
@@ -550,6 +512,130 @@ func (b *TelegramBot) SendRepeatingEventAlert(event *models.Event) error {
 	}
 
 	return nil
+}
+
+// SendEventUpdateAlert отправляет уведомление об изменении события всем подписанным пользователям
+func (b *TelegramBot) SendEventUpdateAlert(event *models.Event) error {
+	members, err := b.eventAlertSubscription.GetSubscribedMembersForEvent(event.Id)
+	if err != nil {
+		return fmt.Errorf("error getting subscribed members for event: %v", err)
+	}
+
+	for _, member := range members {
+		if member.TelegramID == 0 {
+			continue
+		}
+
+		messageText := b.formatEventUpdateAlert(event)
+		msg := tgbotapi.NewMessage(member.TelegramID, messageText)
+		msg.ParseMode = "HTML"
+
+		_, err = b.bot.Send(msg)
+		if err != nil {
+			if strings.Contains(err.Error(), "chat not found") {
+				continue
+			}
+			log.Printf("Error sending event update alert to user %d: %v", member.TelegramID, err)
+			continue
+		}
+	}
+
+	return nil
+}
+
+// formatEventUpdateAlert форматирует сообщение об изменении события
+func (b *TelegramBot) formatEventUpdateAlert(event *models.Event) string {
+	var builder strings.Builder
+
+	builder.WriteString("📝 <b>Событие изменено!</b>\n\n")
+	builder.WriteString(fmt.Sprintf("<b>%s</b>\n", event.Title))
+
+	if event.Description != "" {
+		builder.WriteString(fmt.Sprintf("\n%s\n", event.Description))
+	}
+
+	// Конвертируем время из UTC в МСК
+	moscowLocation, err := time.LoadLocation("Europe/Moscow")
+	var moscowDateStr string
+	if err != nil {
+		log.Printf("Warning: failed to load Moscow location: %v, adding 3 hours manually", err)
+		dateInMoscow := event.Date.UTC().Add(3 * time.Hour)
+		moscowDateStr = dateInMoscow.Format("02.01.2006 в 15:04")
+	} else {
+		dateInMoscow := event.Date.In(moscowLocation)
+		moscowDateStr = dateInMoscow.Format("02.01.2006 в 15:04")
+	}
+
+	builder.WriteString(fmt.Sprintf("\n📆 <b>Дата:</b> %s (МСК)\n", moscowDateStr))
+
+	if len(event.Hosts) > 0 {
+		builder.WriteString("\n👥 <b>Спикеры:</b>\n")
+		for _, host := range event.Hosts {
+			name := strings.TrimSpace(fmt.Sprintf("%s %s", host.FirstName, host.LastName))
+			if name == "" {
+				name = host.Username
+			}
+
+			if host.Username != "" {
+				builder.WriteString(fmt.Sprintf("• %s (@%s)\n", name, host.Username))
+			} else {
+				builder.WriteString(fmt.Sprintf("• %s\n", name))
+			}
+		}
+	}
+
+	if event.PlaceType == models.EventOnline {
+		builder.WriteString(fmt.Sprintf("\n🔗 <b>Ссылка:</b> %s\n", event.Place))
+	} else {
+		place := event.Place
+		if event.CustomPlaceType != "" {
+			place = event.CustomPlaceType + ", " + event.Place
+		}
+		builder.WriteString(fmt.Sprintf("\n📍 <b>Место:</b> %s\n", place))
+	}
+
+	// Добавляем информацию о повторениях
+	if event.IsRepeating && event.RepeatPeriod != nil {
+		builder.WriteString("\n🔄 <b>Повторяющееся событие:</b> ")
+		interval := 1
+		if event.RepeatInterval != nil {
+			interval = *event.RepeatInterval
+		}
+
+		periodLabels := map[string]string{
+			"DAILY":   "день",
+			"WEEKLY":  "неделя",
+			"MONTHLY": "месяц",
+			"YEARLY":  "год",
+		}
+
+		periodLabel := periodLabels[*event.RepeatPeriod]
+		if periodLabel == "" {
+			periodLabel = strings.ToLower(*event.RepeatPeriod)
+		}
+
+		if interval == 1 {
+			builder.WriteString(fmt.Sprintf("каждый %s", periodLabel))
+		} else {
+			builder.WriteString(fmt.Sprintf("каждые %d %s", interval, b.pluralizePeriod(interval, periodLabel)))
+		}
+
+		if event.RepeatEndDate != nil {
+			moscowLocation, err := time.LoadLocation("Europe/Moscow")
+			if err != nil {
+				dateInMoscow := event.RepeatEndDate.In(time.UTC).Add(3 * time.Hour)
+				builder.WriteString(fmt.Sprintf(" до %s", dateInMoscow.Format("02.01.2006")))
+			} else {
+				dateInMoscow := event.RepeatEndDate.In(moscowLocation)
+				builder.WriteString(fmt.Sprintf(" до %s", dateInMoscow.Format("02.01.2006")))
+			}
+		}
+		builder.WriteString("\n")
+	}
+
+	builder.WriteString("\n💡 <i>Пожалуйста, проверьте актуальную информацию о событии</i>")
+
+	return builder.String()
 }
 
 func (b *TelegramBot) startEventAlertsScheduler() {

@@ -2,12 +2,12 @@ package handler
 
 import (
 	"fmt"
-	"log"
 	"ithozyeva/internal/bot"
 	"ithozyeva/internal/models"
 	"ithozyeva/internal/repository"
 	"ithozyeva/internal/service"
 	"ithozyeva/internal/utils"
+	"log"
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
@@ -170,4 +170,33 @@ func (h *EventsHandler) Create(c *fiber.Ctx) error {
 	}()
 
 	return c.Status(fiber.StatusCreated).JSON(result)
+}
+
+// Update переопределяет базовый метод Update для отправки уведомлений об изменении события
+func (h *EventsHandler) Update(c *fiber.Ctx) error {
+	event := new(models.Event)
+	if err := c.BodyParser(event); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный запрос"})
+	}
+
+	result, err := h.service.Update(event)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	// Отправляем уведомления об изменении события в фоне
+	go func() {
+		telegramBot := bot.GetGlobalBot()
+		if telegramBot == nil {
+			log.Printf("Telegram bot is not initialized, skipping update alerts for event %d", result.Id)
+			return
+		}
+		if err := telegramBot.SendEventUpdateAlert(result); err != nil {
+			log.Printf("Error sending event update alerts: %v", err)
+		} else {
+			log.Printf("Successfully sent update alerts for event %d to all subscribed members", result.Id)
+		}
+	}()
+
+	return c.JSON(result)
 }
